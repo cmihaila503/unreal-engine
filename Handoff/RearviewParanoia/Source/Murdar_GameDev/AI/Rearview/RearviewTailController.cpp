@@ -11,11 +11,13 @@
 #include "CollisionQueryParams.h"
 #include "Components/SpotLightComponent.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 
 namespace
 {
 	constexpr float ThinkSeconds = 0.25f; // 4 Hz, the police brain's rate
+	constexpr float EyeHeightCm = 120.f;  // a driver's eyes; geometry, not tuning
 	FGameplayTag Tag(const TCHAR* Name) { return FGameplayTag::RequestGameplayTag(FName(Name), false); }
 }
 
@@ -58,7 +60,7 @@ void ARearviewTailController::OnPossess(APawn* InPawn)
 		Comp->RegisterComponent();
 	}
 	V->BeginAIDriving();
-	V->SetHeadlights(true); // at night everybody drives lit; a follower with no lights would be a giveaway
+	V->SetHeadlights(true); // at night everybody drives lit; a follower without lights would be a giveaway
 
 	// Remember the headlights so high beams can be restored exactly.
 	TArray<USpotLightComponent*> Spots;
@@ -83,19 +85,19 @@ void ARearviewTailController::OnPossess(APawn* InPawn)
 
 void ARearviewTailController::OnUnPossess()
 {
-	GetWorldTimerManager().ClearTimer(ThinkTimer);
+	GetWorldTimerManager().ClearAllTimersForObject(this);
 	if (UVehiclePursuitComponent* P = Pursuit()) { P->SetMode(EPursuitMode::Idle); }
 	Super::OnUnPossess();
 }
 
-void ARearviewTailController::EndPlay(const EEndPlayReason::Type Reason_)
+void ARearviewTailController::EndPlay(const EEndPlayReason::Type EndReason)
 {
 	GetWorldTimerManager().ClearAllTimersForObject(this);
 	if (!bFinished)
 	{
 		if (URearviewSubsystem* Sub = URearviewSubsystem::Get(this)) { Sub->NotifyTailEnded(this); }
 	}
-	Super::EndPlay(Reason_);
+	Super::EndPlay(EndReason);
 }
 
 bool ARearviewTailController::CanSeePlayer(float& OutDistCm) const
@@ -108,17 +110,17 @@ bool ARearviewTailController::CanSeePlayer(float& OutDistCm) const
 		return false;
 	}
 	OutDistCm = FVector::Dist(Me->GetActorLocation(), T->GetActorLocation());
-	// Line of sight at roof height, static world only (a car between us hides him for a moment; the grace covers it).
+	// Line of sight at eye height, static world only (a car between us hides him for a moment; the grace covers it).
 	FCollisionQueryParams Q(SCENE_QUERY_STAT(RearviewSight), false);
 	Q.AddIgnoredActor(Me);
 	Q.AddIgnoredActor(T);
 	FHitResult Hit;
-	const FVector Up(0.f, 0.f, 120.f); // eye height in a car ~1.2 m; not a tuning value
+	const FVector Up(0.f, 0.f, EyeHeightCm);
 	const bool bLOS = !GetWorld()->LineTraceSingleByObjectType(Hit, Me->GetActorLocation() + Up, T->GetActorLocation() + Up,
 		FCollisionObjectQueryParams(ECC_WorldStatic), Q);
 	const URearviewSubsystem* Sub = URearviewSubsystem::Get(this);
 	return MurdarRearview::CanSeeTarget(OutDistCm, bLOS, Sub && Sub->IsDark(), T->AreHeadlightsOn(), bHighBeams,
-		GetDefault<URearviewSettings>()->ToVisibility());
+		GetDefault<URearviewSettings>()->ToVisibility(), Sub && Sub->IsPlayerBraking());
 }
 
 bool ARearviewTailController::IsWithinReact() const
@@ -126,6 +128,25 @@ bool ARearviewTailController::IsWithinReact() const
 	const AMurdarVehicle* Me = Car();
 	const AMurdarVehicle* T = Target.Get();
 	return Me && T && FVector::Dist(Me->GetActorLocation(), T->GetActorLocation()) <= GetDefault<URearviewSettings>()->ReactRangeCm;
+}
+
+bool ARearviewTailController::IsBusy() const
+{
+	return State == ETailState::Lost || State == ETailState::BreakOff || State == ETailState::Aggressive;
+}
+
+void ARearviewTailController::React(TFunction<void()> Reaction)
+{
+	// People don't all react on the same tick: a delay between the settings' min and max, shorter for the skilled.
+	const URearviewSettings* S = GetDefault<URearviewSettings>();
+	const float Base = FMath::Lerp(S->ReactDelayMaxSeconds, S->ReactDelayMinSeconds, Skill01);
+	const float Delay = FMath::Max(0.f, Base * Rng.FRandRange(0.8f, 1.2f)); // ±20 %: two reactions never look identical
+	TWeakObjectPtr<ARearviewTailController> Weak(this);
+	FTimerHandle H;
+	GetWorldTimerManager().SetTimer(H, FTimerDelegate::CreateLambda([Weak, Reaction]()
+	{
+		if (Weak.IsValid() && !Weak->bFinished && !Weak->IsBusy()) { Reaction(); }
+	}), FMath::Max(Delay, KINDA_SMALL_NUMBER), false);
 }
 
 void ARearviewTailController::SetHighBeams(bool bOn)
@@ -153,8 +174,9 @@ void ARearviewTailController::Enter(ETailState Next, const TCHAR* Why)
 	Reason = Why;
 	const URearviewSettings* S = GetDefault<URearviewSettings>();
 	UVehiclePursuitComponent* P = Pursuit();
+	AMurdarVehicle* Me = Car();
 	AMurdarVehicle* T = Target.Get();
-	if (!P)
+	if (!P || !Me)
 	{
 		return;
 	}
@@ -163,15 +185,28 @@ void ARearviewTailController::Enter(ETailState Next, const TCHAR* Why)
 	{
 	case ETailState::Tailing:
 		SetHighBeams(false);
+		Me->SetHeadlights(true);
 		P->SetTargetEstimate(false, FVector::ZeroVector, FVector::ZeroVector);
 		P->SetTarget(T);
 		P->FollowDistance = Follow;
 		P->SetMode(EPursuitMode::Follow);
 		break;
 	case ETailState::BackingOff:
-		P->FollowDistance = Follow * S->UndercoverBackOffScale; // Follow opens a gap by coasting: no brake lights flashing
+		P->FollowDistance = Follow * S->UndercoverBackOffScale; // Follow opens a gap by coasting: no brake-light flicker
 		P->SetMode(EPursuitMode::Follow);
 		break;
+	case ETailState::StoppedBehind:
+		P->FollowDistance = Follow; // Follow with a stopped target stops at the follow distance: the rookie's tell
+		P->SetMode(EPursuitMode::Follow);
+		break;
+	case ETailState::ParkedAhead:
+	{
+		// Past him and on: a point ahead of him on his road, at a calm speed — then park there, dark.
+		const FVector Ahead = T ? T->GetActorLocation() + T->GetActorForwardVector() * S->ParkAheadCm : Me->GetActorLocation();
+		P->SetTarget(nullptr);
+		P->DriveTo(Ahead, S->ParkAheadKph);
+		break;
+	}
 	case ETailState::Alongside:
 	case ETailState::Aggressive:
 		P->SetTarget(T);
@@ -188,11 +223,50 @@ void ARearviewTailController::Enter(ETailState Next, const TCHAR* Why)
 	}
 	case ETailState::BreakOff:
 		SetHighBeams(false);
+		Me->SetHeadlights(true);
 		P->SetTarget(nullptr);
 		P->DriveTo(BreakOffGoal, P->MaxSpeedKph * 0.5f);
 		break;
 	}
 	UE_LOG(LogTemp, Log, TEXT("Rearview tail %s -> %s: %s"), *GetName(), *UEnum::GetValueAsString(Next), Why);
+}
+
+void ARearviewTailController::UpdatePlayerStop(float Now)
+{
+	// He pulls over: the stop test. Only from a normal tail — a gang already alongside isn't wondering.
+	const URearviewSettings* S = GetDefault<URearviewSettings>();
+	const AMurdarVehicle* T = Target.Get();
+	if (!T || (State != ETailState::Tailing && State != ETailState::BackingOff))
+	{
+		PlayerStoppedSince = -1.f;
+		return;
+	}
+	if (FMath::Abs(T->GetSpeedKph()) > S->PlayerStoppedKph)
+	{
+		PlayerStoppedSince = -1.f;
+		return;
+	}
+	if (PlayerStoppedSince < 0.f)
+	{
+		PlayerStoppedSince = Now;
+		return;
+	}
+	if (Now - PlayerStoppedSince < S->PlayerStoppedSeconds || !IsWithinReact())
+	{
+		return;
+	}
+	PlayerStoppedSince = -1.f;
+	switch (MurdarRearview::ChooseStopResponse(Role, Skill01, Rng.FRand()))
+	{
+	case MurdarRearview::EStopResponse::ParkAhead:
+		Enter(ETailState::ParkedAhead, TEXT("he pulled over: drive past, park further on, lights off"));
+		break;
+	case MurdarRearview::EStopResponse::StopBehind:
+	default:
+		Exposure->Add(S->ExposureStoppedBehind); // he sees us stop behind him — and we know he saw it
+		Enter(ETailState::StoppedBehind, TEXT("he pulled over: stopped behind him"));
+		break;
+	}
 }
 
 void ARearviewTailController::Think()
@@ -237,7 +311,7 @@ void ARearviewTailController::Think()
 		}
 	}
 
-	if (State != ETailState::BreakOff && State != ETailState::Aggressive && Exposure->IsBlown(Skill01))
+	if (!IsBusy() && Exposure->IsBlown(Skill01))
 	{
 		if (Role == MurdarRearview::ETailRole::Undercover)
 		{
@@ -251,6 +325,8 @@ void ARearviewTailController::Think()
 		Enter(ETailState::Aggressive, TEXT("made: stops pretending"));
 		return;
 	}
+
+	UpdatePlayerStop(Now);
 
 	switch (State)
 	{
@@ -266,6 +342,29 @@ void ARearviewTailController::Think()
 	case ETailState::Alongside:
 		if (Now - StateSince > S->GangAlongsideSeconds) { Enter(ETailState::Tailing, TEXT("dropped back behind")); }
 		break;
+	case ETailState::StoppedBehind:
+		if (FMath::Abs(T->GetSpeedKph()) > S->PlayerResumedKph) { Enter(ETailState::Tailing, TEXT("he's off again: so are we")); }
+		break;
+	case ETailState::ParkedAhead:
+	{
+		UVehiclePursuitComponent* P = Pursuit();
+		if (P && P->HasArrived() && P->GetMode() != EPursuitMode::Stop)
+		{
+			P->Stop();
+			Me->SetHeadlights(false); // parked, dark, watching the mirror ourselves
+		}
+		// He drives past us: lights on, pull out behind him. He goes the other way and we lose him: give up.
+		const bool bPassed = FVector::DotProduct(T->GetActorLocation() - Me->GetActorLocation(), Me->GetActorForwardVector()) > 0.f;
+		if (FMath::Abs(T->GetSpeedKph()) > S->PlayerResumedKph && bPassed)
+		{
+			Enter(ETailState::Tailing, TEXT("he passed us: pull out behind him"));
+		}
+		else if (!bSeen && Now - LastSeenTime > S->SearchSeconds)
+		{
+			BreakOff(TEXT("he never came past"));
+		}
+		break;
+	}
 	case ETailState::Lost:
 		if (bSeen)
 		{
@@ -308,35 +407,55 @@ void ARearviewTailController::Think()
 
 void ARearviewTailController::OnPlayerBrakeCheck()
 {
-	if (!IsWithinReact() || State == ETailState::Lost || State == ETailState::BreakOff || State == ETailState::Aggressive)
+	if (!IsWithinReact() || IsBusy())
 	{
 		return;
 	}
-	const URearviewSettings* S = GetDefault<URearviewSettings>();
-	Exposure->Add(S->ExposureHeldOnBrakeCheck);
-	if (Role == MurdarRearview::ETailRole::Gang)
+	React([this]()
 	{
-		Enter(ETailState::Alongside, TEXT("brake check: comes up level with him"));
-	}
-	else
-	{
-		Enter(ETailState::BackingOff, TEXT("brake check: drops back, no horn"));
-	}
+		const URearviewSettings* S = GetDefault<URearviewSettings>();
+		Exposure->Add(S->ExposureHeldOnBrakeCheck);
+		if (Role == MurdarRearview::ETailRole::Gang) { Enter(ETailState::Alongside, TEXT("brake check: comes up level with him")); }
+		else { Enter(ETailState::BackingOff, TEXT("brake check: drops back, no horn")); }
+	});
 }
 
 void ARearviewTailController::OnPlayerInspectionTurn()
 {
-	if (!IsWithinReact() || State == ETailState::Lost || State == ETailState::BreakOff)
+	if (!IsWithinReact() || IsBusy())
 	{
 		return;
 	}
-	if (MurdarRearview::TakesTheBait(Role, Skill01, Rng.FRand()))
+	const bool bFollow = MurdarRearview::TakesTheBait(Role, Skill01, Rng.FRand());
+	React([this, bFollow]()
 	{
-		// Follow keeps following — he'll see us take the same side street.
-		Exposure->Add(GetDefault<URearviewSettings>()->ExposureFollowedTurn);
+		if (bFollow)
+		{
+			Exposure->Add(GetDefault<URearviewSettings>()->ExposureFollowedTurn); // Follow keeps following: he'll see us take it
+			return;
+		}
+		BreakOff(TEXT("sudden turn: a pro drives on"));
+	});
+}
+
+void ARearviewTailController::OnPlayerManeuver(MurdarRearview::EManeuver Maneuver)
+{
+	if (!IsWithinReact() || IsBusy())
+	{
 		return;
 	}
-	BreakOff(TEXT("inspection turn: a pro drives on"));
+	// A U-turn or a loop round the block is an obvious test. By the time it completes, a follower still behind him has
+	// been through it; a pro would have peeled off at the last corner — which is what the player now sees him do.
+	const bool bFollow = MurdarRearview::FollowsManeuver(Role, Skill01, Rng.FRand());
+	React([this, bFollow, Maneuver]()
+	{
+		if (bFollow)
+		{
+			Exposure->Add(MurdarRearview::ManeuverExposure(Maneuver, GetDefault<URearviewSettings>()->ToExposure()));
+			return;
+		}
+		BreakOff(Maneuver == MurdarRearview::EManeuver::UTurn ? TEXT("U-turn: a pro drives on past him") : TEXT("round the block: a pro peels off"));
+	});
 }
 
 void ARearviewTailController::BreakOff(const TCHAR* Why)
@@ -359,7 +478,7 @@ void ARearviewTailController::Finish()
 		if (URearviewSubsystem* Sub = URearviewSubsystem::Get(this)) { Sub->NotifyTailEnded(this); }
 		bFinished = true;
 	}
-	GetWorldTimerManager().ClearTimer(ThinkTimer);
+	GetWorldTimerManager().ClearAllTimersForObject(this);
 	APawn* P = GetPawn();
 	UnPossess();
 	if (P) { P->Destroy(); }

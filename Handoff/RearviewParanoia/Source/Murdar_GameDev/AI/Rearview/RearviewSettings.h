@@ -56,14 +56,46 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "Inspection turn", meta = (Units = "s", ClampMin = "1", ClampMax = "8"))
 	float TurnMaxSeconds = 3.5f;
 	UPROPERTY(EditAnywhere, config, Category = "Inspection turn", meta = (Units = "km/h", ClampMin = "5", ClampMax = "80"))
-	float TurnMinKph = 18.f;
+	float TurnMinKph = 25.f;
+	/** Sudden: an ordinary junction turn at 15-20 km/h is ~30 deg/s; taking a side street fast is 45+. */
 	UPROPERTY(EditAnywhere, config, Category = "Inspection turn", meta = (ClampMin = "5", ClampMax = "120"))
-	float TurnMinYawRateDegPerSec = 25.f;
+	float TurnMinYawRateDegPerSec = 45.f;
 	/** Indicating first makes it an ordinary turn. The player has no indicator input yet — see README §Manual. */
 	UPROPERTY(EditAnywhere, config, Category = "Inspection turn")
 	bool bTurnSignalCounts = true;
 	UPROPERTY(EditAnywhere, config, Category = "Inspection turn", meta = (Units = "s", ClampMin = "0", ClampMax = "30"))
 	float TurnCooldownSeconds = 6.f;
+
+	// ---------------------------------------------------------------- Detection route: U-turn, round the block
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "deg", ClampMin = "90", ClampMax = "270"))
+	float UTurnMinDeg = 150.f;
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "s", ClampMin = "3", ClampMax = "30"))
+	float UTurnMaxSeconds = 10.f;
+	/** Right-right-right: nobody innocent goes round a block with you. */
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "deg", ClampMin = "200", ClampMax = "720"))
+	float LoopMinDeg = 300.f;
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "s", ClampMin = "20", ClampMax = "600"))
+	float LoopMaxSeconds = 120.f;
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "km/h", ClampMin = "0", ClampMax = "30"))
+	float ManeuverMinKph = 5.f;
+	UPROPERTY(EditAnywhere, config, Category = "Maneuvers", meta = (Units = "s", ClampMin = "0", ClampMax = "60"))
+	float ManeuverCooldownSeconds = 10.f;
+
+	// ---------------------------------------------------------------- Pulling over (the stop test)
+	/** He counts as stopped below this... */
+	UPROPERTY(EditAnywhere, config, Category = "Stop test", meta = (Units = "km/h", ClampMin = "0", ClampMax = "20"))
+	float PlayerStoppedKph = 4.f;
+	/** ...for this long (a red light is shorter than a deliberate stop only sometimes — the rookie gets both wrong). */
+	UPROPERTY(EditAnywhere, config, Category = "Stop test", meta = (Units = "s", ClampMin = "1", ClampMax = "30"))
+	float PlayerStoppedSeconds = 4.f;
+	/** A pro drives past and parks this far ahead of him, lights off. */
+	UPROPERTY(EditAnywhere, config, Category = "Stop test", meta = (Units = "cm", ClampMin = "2000", ClampMax = "30000"))
+	float ParkAheadCm = 8000.f;
+	UPROPERTY(EditAnywhere, config, Category = "Stop test", meta = (Units = "km/h", ClampMin = "10", ClampMax = "90"))
+	float ParkAheadKph = 40.f;
+	/** He's moving again above this: the parked pro lets him pass, then pulls out behind. */
+	UPROPERTY(EditAnywhere, config, Category = "Stop test", meta = (Units = "km/h", ClampMin = "5", ClampMax = "60"))
+	float PlayerResumedKph = 15.f;
 
 	// ---------------------------------------------------------------- What a follower can see
 	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "cm", ClampMin = "2000", ClampMax = "40000"))
@@ -75,6 +107,9 @@ public:
 	float NightDarkRangeCm = 1800.f;
 	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "cm", ClampMin = "0", ClampMax = "10000"))
 	float HighBeamBonusCm = 1500.f;
+	/** Lights off but braking: the brake lights give him away this far (use the handbrake to stay dark). */
+	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "cm", ClampMin = "1000", ClampMax = "30000"))
+	float NightBrakeLightRangeCm = 9000.f;
 
 	// ---------------------------------------------------------------- Exposure ("he's made me")
 	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "1"))
@@ -83,6 +118,13 @@ public:
 	float ExposureHeldOnBrakeCheck = 0.25f;
 	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "1"))
 	float ExposureRushedAfterDark = 0.35f;
+	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "1"))
+	float ExposureFollowedUTurn = 0.70f;
+	/** One loop round the block blows any follower (>= ExposureBlownAt). */
+	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "1"))
+	float ExposureFollowedLoop = 1.0f;
+	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "1"))
+	float ExposureStoppedBehind = 0.30f;
 	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0", ClampMax = "0.1"))
 	float ExposureDecayPerSecond = 0.004f;
 	UPROPERTY(EditAnywhere, config, Category = "Exposure", meta = (ClampMin = "0.1", ClampMax = "1"))
@@ -108,6 +150,10 @@ public:
 	float UndercoverSuspicionWeight = 1.5f;
 	UPROPERTY(EditAnywhere, config, Category = "Director", meta = (ClampMin = "0", ClampMax = "10"))
 	float GangBaseWeight = 0.2f;
+	/** An ordinary traffic car put behind him on purpose. Night roads are empty: without decoys every car in the mirror
+	 *  would be a follower, and there is no paranoia without false alarms. */
+	UPROPERTY(EditAnywhere, config, Category = "Director", meta = (ClampMin = "0", ClampMax = "10"))
+	float CivilianDecoyWeight = 1.0f;
 	/** A story fact that puts a gang on his trail (set by the chapter / a trigger). */
 	UPROPERTY(EditAnywhere, config, Category = "Director", meta = (Categories = "Fact"))
 	FGameplayTag GangHuntingFact;
@@ -146,6 +192,11 @@ public:
 	float UndercoverBackOffScale = 1.5f;
 	UPROPERTY(EditAnywhere, config, Category = "Follower", meta = (Units = "s", ClampMin = "1", ClampMax = "20"))
 	float BrakeReactSeconds = 5.f;
+	/** People don't react on the same tick: each reaction waits a random delay in this range (skill shortens it). */
+	UPROPERTY(EditAnywhere, config, Category = "Follower", meta = (Units = "s", ClampMin = "0", ClampMax = "3"))
+	float ReactDelayMinSeconds = 0.4f;
+	UPROPERTY(EditAnywhere, config, Category = "Follower", meta = (Units = "s", ClampMin = "0", ClampMax = "5"))
+	float ReactDelayMaxSeconds = 1.3f;
 	/** Brake check: the thug comes up alongside and stays there this long. */
 	UPROPERTY(EditAnywhere, config, Category = "Follower", meta = (Units = "s", ClampMin = "1", ClampMax = "20"))
 	float GangAlongsideSeconds = 4.f;
@@ -180,11 +231,19 @@ public:
 	float CivilianHonkRangeCm = 2500.f;
 	UPROPERTY(EditAnywhere, config, Category = "Civilians", meta = (Units = "s", ClampMin = "0.1", ClampMax = "3"))
 	float CivilianHonkSeconds = 0.8f;
+	/** Further back but still close: a 1990s driver flashes his lights instead (two short blinks). */
+	UPROPERTY(EditAnywhere, config, Category = "Civilians", meta = (Units = "cm", ClampMin = "1000", ClampMax = "15000"))
+	float CivilianFlashRangeCm = 6000.f;
+	UPROPERTY(EditAnywhere, config, Category = "Civilians", meta = (Units = "s", ClampMin = "0.05", ClampMax = "1"))
+	float CivilianFlashBlinkSeconds = 0.15f;
 
 	// ---------------------------------------------------------------- Mirror view
-	/** Camera position relative to the car's root: the interior mirror, looking back. */
-	UPROPERTY(EditAnywhere, config, Category = "Mirror")
-	FVector MirrorOffsetCm = FVector(40.f, 0.f, 120.f);
+	/** The mirror camera sits just behind the car's body (placed from its bounds), at this height, looking back — inside
+	 *  the cabin it would look through the car's own mesh. The mask material frames it as the interior mirror. */
+	UPROPERTY(EditAnywhere, config, Category = "Mirror", meta = (Units = "cm", ClampMin = "0", ClampMax = "200"))
+	float MirrorBehindBodyCm = 30.f;
+	UPROPERTY(EditAnywhere, config, Category = "Mirror", meta = (Units = "cm", ClampMin = "50", ClampMax = "250"))
+	float MirrorHeightCm = 120.f;
 	UPROPERTY(EditAnywhere, config, Category = "Mirror", meta = (Units = "deg", ClampMin = "10", ClampMax = "90"))
 	float MirrorFovDeg = 32.f;
 	/** Engine volume while looking in the mirror: to hear the car behind. */
@@ -211,16 +270,25 @@ public:
 		C.MinYawRateDegPerSec = TurnMinYawRateDegPerSec; C.bSignalCounts = bTurnSignalCounts; C.CooldownSeconds = TurnCooldownSeconds;
 		return C;
 	}
+	MurdarRearview::FManeuverConfig ToManeuver() const
+	{
+		MurdarRearview::FManeuverConfig C;
+		C.UTurnMinDeg = UTurnMinDeg; C.UTurnMaxSeconds = UTurnMaxSeconds; C.LoopMinDeg = LoopMinDeg;
+		C.LoopMaxSeconds = LoopMaxSeconds; C.MinKph = ManeuverMinKph; C.CooldownSeconds = ManeuverCooldownSeconds;
+		return C;
+	}
 	MurdarRearview::FVisibilityConfig ToVisibility() const
 	{
 		MurdarRearview::FVisibilityConfig C;
 		C.DayRangeCm = DayRangeCm; C.NightLitRangeCm = NightLitRangeCm; C.NightDarkRangeCm = NightDarkRangeCm; C.HighBeamBonusCm = HighBeamBonusCm;
+		C.NightBrakeLightRangeCm = NightBrakeLightRangeCm;
 		return C;
 	}
 	MurdarRearview::FExposureConfig ToExposure() const
 	{
 		MurdarRearview::FExposureConfig C;
 		C.FollowedTurn = ExposureFollowedTurn; C.HeldOnBrakeCheck = ExposureHeldOnBrakeCheck; C.RushedAfterDark = ExposureRushedAfterDark;
+		C.FollowedUTurn = ExposureFollowedUTurn; C.FollowedLoop = ExposureFollowedLoop; C.StoppedBehind = ExposureStoppedBehind;
 		C.DecayPerSecond = ExposureDecayPerSecond; C.BlownAt = ExposureBlownAt;
 		return C;
 	}

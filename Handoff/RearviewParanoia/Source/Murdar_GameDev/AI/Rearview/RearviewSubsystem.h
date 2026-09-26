@@ -1,7 +1,8 @@
-// "Paranoia în retrovizoare" — the director. Watches how the player drives at night (brake checks, inspection turns,
-// lights out), tells whoever is behind him, makes the civilian behind lean on the horn, and now and then puts a
-// follower on his tail (an undercover crew, a gang car). No UI: everything the player learns, he learns from the
-// mirror. 10 Hz timer, nothing per frame (PROJECT_OVERVIEW §5).
+// "Paranoia în retrovizoare" — the director. Watches how the player drives at night (brake checks, sudden turns,
+// U-turns, a loop round the block, pulling over, lights out), tells whoever is behind him, makes the civilian behind
+// honk or flash, and now and then puts somebody on his tail: an undercover crew, a gang car — or, as often, nobody at
+// all, just an ordinary car that happens to go his way. No UI: everything the player learns, he learns from the mirror.
+// 10 Hz timer, nothing per frame (PROJECT_OVERVIEW §5).
 
 #pragma once
 
@@ -26,10 +27,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Murdar|Rearview")
 	bool IsDark() const { return bDark; }
 
+	/** The player's foot is on the brake (not the handbrake): his brake lights are on. */
+	bool IsPlayerBraking() const { return bPlayerBraking; }
+
 	/** MurdarNight: -1 = settings decide, 0 = day, 1 = night. */
 	void SetNightOverride(int32 Mode) { NightOverride = Mode; UpdateDarkness(); }
 
-	/** MurdarTail: start a tail now (Role 1 undercover, 2 gang); false when there is no place to put it. */
+	/** MurdarTail: put somebody behind him now (Civilian = a decoy, an ordinary car). False when there is no place. */
 	bool StartTail(MurdarRearview::ETailRole Role);
 
 	/** The follower tells us it's done (broke off, lost him, destroyed). */
@@ -44,17 +48,24 @@ protected:
 
 private:
 	void Update();          // 10 Hz
-	void UpdateDarkness();  // 1 Hz (every 10th update) and on override
+	void UpdateDarkness();  // 1 Hz and on override
+	void ResetDetectors();
 	void MaybeStartTail(float Now);
+	void UpdatePlayerBrakeLights(AMurdarVehicle* Car);
 	void OnBrakeCheck(AMurdarVehicle* PlayerCar);
 	void OnInspectionTurn(AMurdarVehicle* PlayerCar, int32 Side);
-	void HonkCivilianBehind(AMurdarVehicle* PlayerCar);
+	void OnManeuver(AMurdarVehicle* PlayerCar, MurdarRearview::EManeuver Maneuver);
+	void CivilianReactsToBrakeCheck(AMurdarVehicle* PlayerCar);
+	void FlashHeadlights(AMurdarVehicle* Car, int32 BlinksLeft);
 	void EnsureMirror(AMurdarVehicle* PlayerCar);
+	bool FindSpotBehind(const AMurdarVehicle* PlayerCar, FTransform& Out) const;
+	bool SpawnDecoy(const FTransform& Where);
 	void Publish(FGameplayTag Tag, const AActor* Source, float Magnitude = 0.f) const;
 	AMurdarVehicle* PlayerCar() const;
 
 	TUniquePtr<MurdarRearview::FBrakeCheckDetector> BrakeCheck;
 	TUniquePtr<MurdarRearview::FInspectionTurnDetector> InspectionTurn;
+	TUniquePtr<MurdarRearview::FManeuverTracker> Maneuvers;
 	TArray<TWeakObjectPtr<ARearviewTailController>> Tails;
 
 	FTimerHandle UpdateTimer;
@@ -63,9 +74,13 @@ private:
 	int32 NightOverride = -1;
 	bool bDark = false;
 	bool bLastLights = true;
+	bool bPlayerBraking = false;
 	float LastTailEndTime = -1.e6f;
 	int32 BrakeChecks = 0;
 	int32 InspectionTurns = 0;
+	int32 UTurns = 0;
+	int32 Loops = 0;
 	int32 TailsStarted = 0;
+	int32 DecoysStarted = 0;
 	TWeakObjectPtr<AMurdarVehicle> LastPlayerCar;
 };

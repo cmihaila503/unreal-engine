@@ -4,9 +4,14 @@ Design: `DESIGN.md` (Romanian). Written 2026-09-26 **against the real source** (
 unlike the older Handoff files. Every engine/project API used below was read in that source; the few points that could
 not be settled from reading are marked `// ADAPT:`.
 
-**Verified here:** `RearviewRules.h` (brake-check / inspection-turn detectors, night visibility, exposure, bait
-choice) — compiles with g++ C++17 `-Wall -Wextra -Wshadow`, 11 tests / 27 checks pass (`Tests/rearview_rules_test.cpp`).
-One real bug was caught by the tests and fixed (an emergency stop was read as a brake check mid-brake).
+**Verified here:** `RearviewRules.h` (brake check, sudden turn, U-turn / round-the-block, night visibility with brake
+lights, exposure, bait / stop choices) — compiles with g++ C++17 `-Wall -Wextra -Wshadow`, 18 tests / 46 checks pass
+(`Tests/rearview_rules_test.cpp`). The tests caught two real bugs, both fixed: an emergency stop was read as a brake
+check mid-brake; a sudden turn's rate was measured over the straight road before it, so every turn looked gentle.
+
+**v1.1 (review, same day):** see `DESIGN.md` §Review — ordinary turns no longer count as tests; U-turn and round-the-
+block added; decoy civilians; headlight flash; the stop test; the player's brake lights; human reaction delays; the
+mirror camera moved out of the car body.
 **Not compiled:** the Unreal files (no engine here).
 
 ## Paste this prompt into local Claude Code
@@ -62,6 +67,8 @@ The police controller is **not** touched.
 +GameplayTagList=(Tag="Event.Rearview.BrakeCheck",DevComment="Player tapped the brakes hard at night (rearview)")
 +GameplayTagList=(Tag="Event.Rearview.InspectionTurn",DevComment="Player turned sharply without signalling (rearview); Magnitude +1 right / -1 left")
 +GameplayTagList=(Tag="Event.Rearview.LightsOut",DevComment="Player switched his lights off at night")
++GameplayTagList=(Tag="Event.Rearview.UTurn",DevComment="Player turned back the way he came (rearview)")
++GameplayTagList=(Tag="Event.Rearview.AroundTheBlock",DevComment="Player went round a block (rearview detection route)")
 +GameplayTagList=(Tag="Event.Rearview.TailStarted",DevComment="A follower got behind him; Magnitude = role (1 undercover, 2 gang)")
 +GameplayTagList=(Tag="Event.Rearview.TailBlown",DevComment="An undercover follower knows he's been made and breaks off")
 +GameplayTagList=(Tag="Event.Rearview.GangAttack",DevComment="A gang follower stopped pretending and rams")
@@ -71,7 +78,16 @@ The police controller is **not** touched.
 Then Project Settings ▸ Murdar Rearview ▸ `GangHuntingFact` = `Fact.Gang.Hunting`. (The tags are requested by name in
 code — no `MurdarTags.h` edit. If you prefer native tags, move them there and replace the `Tag(TEXT(...))` calls.)
 
-### 2. The car: mirror input — `Vehicle/MurdarVehicle.h/.cpp`
+### 2. The car: brake pedal getter + mirror input — `Vehicle/MurdarVehicle.h/.cpp`
+
+```cpp
+// MurdarVehicle.h, public, next to AreHeadlightsOn(): the brake pedal (not the handbrake) — the rearview subsystem
+// drives the player's brake lamps from it; the handbrake lights nothing (slowing down dark is the old trick).
+float GetBrakeInput() const { return RawBrake; }
+```
+
+The player's car gets a `UVehicleSignalsComponent` from the rearview subsystem (created the same way
+`UTrafficDriverComponent` creates it), so it finally has brake lights.
 
 ```cpp
 // MurdarVehicle.h, next to HornAction / LightsAction
@@ -111,7 +127,7 @@ Also in `Exit()`: `if (UMirrorViewComponent* M = FindComponentByClass<UMirrorVie
 ```cpp
 /** MurdarNight -1|0|1: settings decide / day / night (rearview works only at night). */
 UFUNCTION(Exec) void MurdarNight(int32 Mode);
-/** MurdarTail undercover|gang: put a follower behind the player now. */
+/** MurdarTail undercover|gang|civilian: put a follower (or a decoy) behind the player now. */
 UFUNCTION(Exec) void MurdarTail(const FString& Role);
 /** MurdarRearview: darkness, tests seen, tails and their state. */
 UFUNCTION(Exec) void MurdarRearview();
@@ -128,7 +144,10 @@ void UDirectorCheats::MurdarTail(const FString& Role)
 {
 	URearviewSubsystem* R = URearviewSubsystem::Get(this);
 	const bool bGang = Role.Equals(TEXT("gang"), ESearchCase::IgnoreCase);
-	const bool bOk = R && R->StartTail(bGang ? MurdarRearview::ETailRole::Gang : MurdarRearview::ETailRole::Undercover);
+	const MurdarRearview::ETailRole Which = bGang ? MurdarRearview::ETailRole::Gang
+		: Role.Equals(TEXT("civilian"), ESearchCase::IgnoreCase) ? MurdarRearview::ETailRole::Civilian
+		: MurdarRearview::ETailRole::Undercover;
+	const bool bOk = R && R->StartTail(Which);
 	// ADAPT: print like the other cheats
 	UE_LOG(LogTemp, Display, TEXT("MurdarTail %s: %s"), *Role, bOk ? TEXT("started") : TEXT("no place behind him (drive on a road, at night)"));
 }
@@ -162,7 +181,7 @@ Add the three to `Docs/PROJECT_OVERVIEW.md` §8.
 g++ -std=c++17 -Wall -Wextra -Wshadow -I Handoff/RearviewParanoia/Source/Murdar_GameDev/AI/Rearview ^
     Handoff/RearviewParanoia/Tests/rearview_rules_test.cpp -o rv.exe && rv.exe
 ```
-(or MSVC: `cl /std:c++17 /EHsc /I ... rearview_rules_test.cpp`). Expected: `27 checks, 0 failed`.
+(or MSVC: `cl /std:c++17 /EHsc /I ... rearview_rules_test.cpp`). Expected: `46 checks, 0 failed`.
 
 ### In game (Freeroam map, population on)
 
@@ -180,12 +199,20 @@ g++ -std=c++17 -Wall -Wextra -Wshadow -I Handoff/RearviewParanoia/Source/Murdar_
 | RV-10 | hold the mirror key | view snaps to the mirror, engine quieter; release → back; exit the car while holding → normal camera |
 | RV-11 | `MurdarNight 0` | no tails start, no reactions (day) |
 | RV-12 | police regression: chase recording + Phase 7–9 tests | unchanged (the police controller is not modified) |
+| RV-13 | no tail, a traffic car 30–60 m behind, brake check | it flashes its headlights twice |
+| RV-14 | undercover tail (`MurdarTail undercover`), pull over and wait 5 s — repeat with several tails | sometimes it stops ~40 m behind you (rookie); sometimes it drives past and parks further on with its lights off, and pulls out behind you when you pass it |
+| RV-15 | gang tail, go round a block (three rights) | it follows round and is blown (alongside, ram) |
+| RV-16 | undercover tail, U-turn | usually it drives on past you (you see it pass); sometimes it turns too (then blown soon) |
+| RV-17 | tail on, lights off, then slow down with the brake pedal vs. the handbrake | pedal: the follower keeps you (brake lights); handbrake: it loses you |
+| RV-18 | `MurdarTail civilian` (decoy) | an ordinary car appears behind and goes its own way; `MurdarRearview` counts a decoy |
+| RV-19 | an ordinary junction turn at 15–20 km/h | no `InspectionTurn` in the log (only sudden turns at 25+ km/h count) |
 
 ## Known limits (v1)
 
 - Night is a flag or the sun's pitch; street lights don't make a dark car visible (no light sampling).
 - A pro "driving on" after an inspection turn ends that tail; a later version could re-acquire him at the side
   street's far end (`MurdarRoad::JunctionsAhead` has what's needed).
-- Only undercover and gang are spawned; civilians behind you are the population's ordinary traffic (they honk on a
-  brake check and go their own way on a turn — exactly the false positives the design wants).
+- Followers run red lights to keep up (the pursuit driver has no signal logic). That is a real-world tell and is left in
+  on purpose; a v2 pro could stop at the red and lose him.
+- A pro that drives on (sudden turn, U-turn) ends that tail; re-acquiring at the side street's far end is v2.
 - The gang attack is ramming only; getting out and shooting is the foot AI's job later.

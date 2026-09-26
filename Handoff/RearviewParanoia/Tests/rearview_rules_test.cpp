@@ -158,6 +158,107 @@ int main()
 		CHECK(TakesTheBait(ETailRole::Undercover, 0.f, 0.1f));  // a rookie always follows
 	});
 
+	Run("inspection turn: an ordinary junction turn (20 km/h, ~30 deg/s) is not a test", [&]
+	{
+		FInspectionTurnDetector D(TC);
+		int Side = 0;
+		CHECK(DriveTurn(D, 0.0, 8.0, [](double T) { return T < 2.0 ? 0.f : (T < 5.0 ? float((T - 2.0) * 30.0) : 90.f); },
+			20.f, [](double) { return false; }, Side) == 0);
+	});
+
+	const FManeuverConfig MC;
+	auto DriveManeuver = [](FManeuverTracker& M, double From, double To, const std::function<float(double)>& Yaw, float Kph, EManeuver& Got)
+	{
+		int Fired = 0;
+		for (double T = From; T <= To + 1e-9; T += 0.1)
+		{
+			const EManeuver E = M.Sample(T, Yaw(T), Kph);
+			if (E != EManeuver::None) { ++Fired; Got = E; }
+		}
+		return Fired;
+	};
+
+	Run("maneuver: a U-turn is recognised", [&]
+	{
+		FManeuverTracker M(MC);
+		EManeuver Got = EManeuver::None;
+		const int N = DriveManeuver(M, 0.0, 12.0, [](double T)
+		{
+			double Y = T < 2.0 ? 0.0 : (T < 6.0 ? (T - 2.0) * 45.0 : 180.0);
+			if (Y > 180.0) Y -= 360.0;
+			return float(Y);
+		}, 15.f, Got);
+		CHECK(N == 1);
+		CHECK(Got == EManeuver::UTurn);
+	});
+
+	Run("maneuver: right, right, right round the block (with straights between) is a loop", [&]
+	{
+		FManeuverTracker M(MC);
+		EManeuver Got = EManeuver::None;
+		// three 90 degree rights, 25 s of straight road between them: never 150 within 10 s
+		auto Yaw = [](double T)
+		{
+			auto Seg = [](double t, double start) { return std::min(std::max((t - start) / 3.0, 0.0), 1.0) * 90.0; };
+			double Y = Seg(T, 5.0) + Seg(T, 33.0) + Seg(T, 61.0) + Seg(T, 89.0);
+			while (Y > 180.0) Y -= 360.0;
+			return float(Y);
+		};
+		const int N = DriveManeuver(M, 0.0, 100.0, Yaw, 30.f, Got);
+		CHECK(N == 1);
+		CHECK(Got == EManeuver::AroundTheBlock);
+	});
+
+	Run("maneuver: right then left then right (zig-zag through town) is not a loop", [&]
+	{
+		FManeuverTracker M(MC);
+		EManeuver Got = EManeuver::None;
+		auto Yaw = [](double T)
+		{
+			auto Seg = [](double t, double start) { return std::min(std::max((t - start) / 3.0, 0.0), 1.0) * 90.0; };
+			return float(Seg(T, 5.0) - Seg(T, 33.0) + Seg(T, 61.0));
+		};
+		CHECK(DriveManeuver(M, 0.0, 100.0, Yaw, 30.f, Got) == 0);
+	});
+
+	Run("maneuver: wheel wobble at a standstill counts for nothing", [&]
+	{
+		FManeuverTracker M(MC);
+		EManeuver Got = EManeuver::None;
+		CHECK(DriveManeuver(M, 0.0, 30.0, [](double T) { return float(std::fmod(T * 90.0, 360.0) - 180.0); }, 0.f, Got) == 0);
+	});
+
+	Run("visibility: brake lights give a dark car away", [&]
+	{
+		CHECK(!CanSeeTarget(5000.f, true, true, false, false, VC, false));
+		CHECK(CanSeeTarget(5000.f, true, true, false, false, VC, true));
+		CHECK(!CanSeeTarget(5000.f, false, true, false, false, VC, true)); // still needs line of sight
+	});
+
+	Run("stop response: pros park ahead, rookies stop behind, gang stops behind, civilians drive on", [&]
+	{
+		CHECK(ChooseStopResponse(ETailRole::Undercover, 0.9f, 0.5f) == EStopResponse::ParkAhead);
+		CHECK(ChooseStopResponse(ETailRole::Undercover, 0.1f, 0.5f) == EStopResponse::StopBehind);
+		CHECK(ChooseStopResponse(ETailRole::Gang, 1.f, 0.f) == EStopResponse::StopBehind);
+		CHECK(ChooseStopResponse(ETailRole::Civilian, 0.f, 0.f) == EStopResponse::DriveOn);
+	});
+
+	Run("maneuver follow: a pro refuses a U-turn far more often than a rookie", [&]
+	{
+		int Pro = 0, Rookie = 0;
+		for (int i = 0; i < 100; ++i)
+		{
+			const float R = (i + 0.5f) / 100.f;
+			Pro += FollowsManeuver(ETailRole::Undercover, 0.9f, R) ? 1 : 0;
+			Rookie += FollowsManeuver(ETailRole::Undercover, 0.1f, R) ? 1 : 0;
+		}
+		CHECK(Pro < 20);
+		CHECK(Rookie > 60);
+		CHECK(FollowsManeuver(ETailRole::Gang, 1.f, 0.99f));
+		CHECK(!FollowsManeuver(ETailRole::Civilian, 0.f, 0.99f));
+		CHECK(ManeuverExposure(EManeuver::AroundTheBlock, EC) >= EC.BlownAt); // one loop blows any follower
+	});
+
 	std::printf("\n%d checks, %d failed\n", Checks, Failures);
 	return Failures == 0 ? 0 : 1;
 }

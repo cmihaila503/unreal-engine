@@ -1,6 +1,7 @@
 #include "AI/Rearview/MirrorViewComponent.h"
 
 #include "AI/Rearview/RearviewSettings.h"
+#include "Vehicle/MurdarVehicle.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/AudioComponent.h"
@@ -23,8 +24,12 @@ void UMirrorViewComponent::EnsureCamera()
 	const URearviewSettings* S = GetDefault<URearviewSettings>();
 	MirrorCamera = NewObject<UCameraComponent>(Owner, TEXT("RearviewMirrorCamera"));
 	MirrorCamera->SetupAttachment(Owner->GetRootComponent());
-	MirrorCamera->SetRelativeLocation(S->MirrorOffsetCm);
-	MirrorCamera->SetRelativeRotation(FRotator(0.f, 180.f, 0.f)); // looking back through the rear window
+	// Just behind the body, looking back: from inside the cabin the camera would look through the car's own mesh
+	// (review 26 Sep). The body's length comes from its bounds; the mask material frames the view as the mirror.
+	const AMurdarVehicle* Car = Cast<AMurdarVehicle>(Owner);
+	const float HalfLength = Car ? Car->GetBodyHalfExtents().X : 0.f;
+	MirrorCamera->SetRelativeLocation(FVector(-(HalfLength + S->MirrorBehindBodyCm), 0.f, S->MirrorHeightCm));
+	MirrorCamera->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
 	MirrorCamera->SetFieldOfView(S->MirrorFovDeg);
 	MirrorCamera->bUsePawnControlRotation = false;
 	MirrorCamera->PostProcessBlendWeight = 1.f;
