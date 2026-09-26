@@ -27,6 +27,10 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 
 ## Files
 
+**Read `REVIEW_2026-09-26.md` first** — it re-rates these files and gives the recommended order (01, 04, 06,
+02-if-reproduced, civilians Phase 0, then the rest one by one with the user's OK).
+
+
 | # | File | Kind | Risk |
 |---|---|---|---|
 | 01 | `01_DOCS_CHANGES.md` + `docs.patch` | copy Docs edits | none |

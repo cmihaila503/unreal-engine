@@ -78,14 +78,23 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "cm", ClampMin = "2000", ClampMax = "40000"))
 	float SpawnRingMaxCm = 9000.f;
 
-	/** Civilians beyond this, unseen, go back to the pool. Kept above SpawnRingMaxCm so a spawn is never
-	 *  immediately a despawn candidate (clamped at use). */
+	/** Civilians beyond this, unseen, go back to the pool. Kept above SpawnRingMaxCm + MaxSpawnLookAheadCm so a
+	 *  spawn is never immediately a despawn candidate (clamped at use). */
 	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "cm", ClampMin = "3000", ClampMax = "50000"))
-	float DespawnDistanceCm = 12000.f;
+	float DespawnDistanceCm = 16000.f;
 
 	/** How long a far civilian must have been out of view before it may be despawned. */
 	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "s", ClampMin = "0", ClampMax = "60"))
 	float DespawnUnseenSeconds = 5.f;
+
+	/** The spawn ring is centred on where the player will be this far ahead (his velocity × this), so a driver
+	 *  meets people instead of leaving them behind; on foot it barely moves the ring (review R1). */
+	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "s", ClampMin = "0", ClampMax = "10"))
+	float SpawnLookAheadSeconds = 3.f;
+
+	/** Cap on that look-ahead offset (a car at 150 km/h would otherwise push the ring 125 m ahead). */
+	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "cm", ClampMin = "0", ClampMax = "20000"))
+	float MaxSpawnLookAheadCm = 6000.f;
 
 	/** No two civilians spawn closer than this (no clumps, no overlapping capsules). */
 	UPROPERTY(EditAnywhere, config, Category = "Population", meta = (Units = "cm", ClampMin = "100", ClampMax = "2000"))
@@ -95,11 +104,19 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "deg", ClampMin = "0", ClampMax = "45"))
 	float ViewConeMarginDeg = 10.f;
 
+	/** A person whose on-screen height is below this many pixels is "not visible" for spawning: at that size a
+	 *  figure fading in is indistinguishable from one walking out of a doorway. This is what lets streets ahead of
+	 *  a fast car fill up in open areas with no occluders (review R1). Provisional; tune by eye in Phase 1. */
+	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (ClampMin = "0", ClampMax = "100"))
+	float ImperceptiblePixelHeight = 12.f;
+
 	/** Used only if the player has no camera manager. */
 	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "deg", ClampMin = "30", ClampMax = "170"))
 	float FallbackFovDeg = 90.f;
 
-	/** Visibility is traced to the head and to the chest; if either is unobstructed the person is visible. */
+	/** Visibility is traced to the head and to the chest; if either is unobstructed the person is visible.
+	 *  Only static geometry occludes: a person "hidden" behind a passing bus or another pedestrian would pop into
+	 *  view a second later (review R2). */
 	UPROPERTY(EditAnywhere, config, Category = "Visibility", meta = (Units = "cm", ClampMin = "100", ClampMax = "220"))
 	float HeadHeightCm = 165.f;
 

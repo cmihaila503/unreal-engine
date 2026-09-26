@@ -209,16 +209,37 @@ bool UCivilianPopulationSubsystem::GetViewer(FViewer& Out) const
 	Out.IgnoreActor = PlayerPawn;
 
 	const UCivilianPopulationSettings* S = GetDefault<UCivilianPopulationSettings>();
-	const float Fov = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetFOVAngle() : S->FallbackFovDeg;
-	Out.HalfFovDeg = 0.5f * Fov;
+
+	// Spawn ring leads the player along his velocity (the car's, when driving).
+	FVector LookAhead = PlayerPawn->GetVelocity() * S->SpawnLookAheadSeconds;
+	LookAhead.Z = 0.f;
+	Out.SpawnCentre = Out.PawnLocation + LookAhead.GetClampedToMaxSize(S->MaxSpawnLookAheadCm);
+
+	// The frustum's corners are farther off-axis than its horizontal half-FOV, so the "in view" cone uses the
+	// half-diagonal (from the viewport aspect) plus the margin for camera swing.
+	const float HFovDeg = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetFOVAngle() : S->FallbackFovDeg;
+	int32 VpW = 0, VpH = 0;
+	PC->GetViewportSize(VpW, VpH);
+	const float Aspect = (VpW > 0 && VpH > 0) ? float(VpW) / float(VpH) : 16.f / 9.f; // 16:9 when headless
+	const float TanH = FMath::Tan(FMath::DegreesToRadians(0.5f * HFovDeg));
+	const float TanV = TanH / Aspect;
+	const float HalfDiagDeg = FMath::RadiansToDegrees(FMath::Atan(FMath::Sqrt(TanH * TanH + TanV * TanV)));
+	Out.CosViewCone = FMath::Cos(FMath::DegreesToRadians(FMath::Min(HalfDiagDeg + S->ViewConeMarginDeg, 179.f)));
+	Out.PixelsPerUnitAtUnitDistance = VpH > 0 ? float(VpH) / (2.f * TanV) : 0.f;
 	return true;
 }
 
 bool UCivilianPopulationSubsystem::IsVisible(const FViewer& Viewer, const FVector& FeetLocation, const AActor* Candidate) const
 {
 	const UCivilianPopulationSettings* S = GetDefault<UCivilianPopulationSettings>();
-	const float ConeDeg = Viewer.HalfFovDeg + S->ViewConeMarginDeg;
-	const float CosCone = FMath::Cos(FMath::DegreesToRadians(FMath::Min(ConeDeg, 179.f)));
+
+	// Too small to notice: a whole person under ImperceptiblePixelHeight on screen.
+	const float DistToFeet = FVector::Dist(FeetLocation, Viewer.ViewLocation);
+	if (Viewer.PixelsPerUnitAtUnitDistance > 0.f && DistToFeet > KINDA_SMALL_NUMBER
+		&& S->HeadHeightCm * Viewer.PixelsPerUnitAtUnitDistance / DistToFeet < S->ImperceptiblePixelHeight)
+	{
+		return false;
+	}
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(CivilianVisibility), /*bTraceComplex*/ false);
 	Params.AddIgnoredActor(Viewer.IgnoreActor);
@@ -236,25 +257,32 @@ bool UCivilianPopulationSubsystem::IsVisible(const FViewer& Viewer, const FVecto
 		{
 			return true;
 		}
-		// Horizontal FOV used as a cone: wider than the real frustum vertically, i.e. conservative.
-		if (FVector::DotProduct(ToPoint / Dist, Viewer.ViewDirection) < CosCone)
+		// A round cone through the frustum's corners: covers the whole screen, a bit more above and below.
+		if (FVector::DotProduct(ToPoint / Dist, Viewer.ViewDirection) < Viewer.CosViewCone)
 		{
 			continue; // outside the view cone
 		}
+		// Static geometry only: cars and people move away and would reveal the spawn a moment later.
 		FHitResult Hit;
-		if (!GetWorld()->LineTraceSingleByChannel(Hit, Viewer.ViewLocation, Point, ECC_Visibility, Params))
+		if (!GetWorld()->LineTraceSingleByObjectType(Hit, Viewer.ViewLocation, Point,
+			FCollisionObjectQueryParams(ECC_WorldStatic), Params))
 		{
-			return true; // in the cone and nothing in between
+			return true; // in the cone and nothing static in between
 		}
 	}
 	return false;
 }
 
+float UCivilianPopulationSubsystem::DespawnDistance() const
+{
+	const UCivilianPopulationSettings* S = GetDefault<UCivilianPopulationSettings>();
+	return FMath::Max(S->DespawnDistanceCm, S->SpawnRingMaxCm + S->MaxSpawnLookAheadCm + S->MinSeparationCm);
+}
+
 void UCivilianPopulationSubsystem::DespawnPass(const FViewer& Viewer, double Now)
 {
 	const UCivilianPopulationSettings* S = GetDefault<UCivilianPopulationSettings>();
-	const float DespawnCm = FMath::Max(S->DespawnDistanceCm, S->SpawnRingMaxCm + S->MinSeparationCm);
-	const float DespawnSq = FMath::Square(DespawnCm);
+	const float DespawnSq = FMath::Square(DespawnDistance());
 
 	for (int32 i = Active.Num() - 1; i >= 0; --i)
 	{
@@ -343,7 +371,14 @@ bool UCivilianPopulationSubsystem::FindSpawnPoint(const FViewer& Viewer, FVector
 	// Uniform over the ring's area (sqrt of a uniform between the squared radii), not clumped at the inner edge.
 	const float Angle = Rng.FRandRange(0.f, 2.f * PI);
 	const float Radius = FMath::Sqrt(Rng.FRandRange(MinR * MinR, MaxR * MaxR));
-	const FVector Candidate = Viewer.PawnLocation + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.f) * Radius;
+	const FVector Candidate = Viewer.SpawnCentre + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.f) * Radius;
+
+	// The ring leads the player; never spawn closer to him than the inner radius.
+	if (FVector::DistSquared2D(Candidate, Viewer.PawnLocation) < FMath::Square(MinR))
+	{
+		++Stats.RejectedCrowded;
+		return false;
+	}
 
 	FNavLocation OnNav;
 	if (!Nav->ProjectPointToNavigation(Candidate, OnNav, Extent, NavData))
@@ -511,9 +546,10 @@ void UCivilianPopulationSubsystem::DebugDraw(const FViewer& Viewer) const
 	const FVector C = Viewer.PawnLocation;
 	const int32 Segments = 64;
 
-	DrawDebugCircle(World, C, S->SpawnRingMinCm, Segments, FColor::Green, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
-	DrawDebugCircle(World, C, S->SpawnRingMaxCm, Segments, FColor::Green, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
-	DrawDebugCircle(World, C, S->DespawnDistanceCm, Segments, FColor::Red, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
+	const FVector R = Viewer.SpawnCentre;
+	DrawDebugCircle(World, R, S->SpawnRingMinCm, Segments, FColor::Green, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
+	DrawDebugCircle(World, R, S->SpawnRingMaxCm, Segments, FColor::Green, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
+	DrawDebugCircle(World, C, DespawnDistance(), Segments, FColor::Red, false, Life, 0, 0.f, FVector::ForwardVector, FVector::RightVector, false);
 
 	for (const FSlot& Slot : Active)
 	{

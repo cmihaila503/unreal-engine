@@ -74,9 +74,11 @@ proves actors can't reach the budget the user wants.
 
 - Target count = `DensityPerHectare(zone at the player) × area of the spawn disc × DensityScale`, capped by
   `MaxCivilians`. Zone density comes from `Zone.*` tags; a default applies outside zones.
-- Spawn only in the ring [`SpawnRingMinCm`, `SpawnRingMaxCm`] around the player, on the Human navmesh, at least
-  `MinSeparationCm` from other civilians, and **not visible**: outside the camera's view cone (+margin) *or* occluded
-  (line trace from the camera to head height).
+- Spawn only in the ring [`SpawnRingMinCm`, `SpawnRingMaxCm`] around where the player **will be** in
+  `SpawnLookAheadSeconds` (his velocity, capped) — a driver meets people instead of leaving them behind — never
+  closer to him than the inner radius, on the Human navmesh, at least `MinSeparationCm` from other civilians, and
+  **not visible**: outside the view cone (frustum half-diagonal + margin), *or* occluded by **static** geometry
+  (a bus or a crowd moves away and reveals the spawn), *or* smaller than `ImperceptiblePixelHeight` on screen.
 - Despawn (to the pool) only when farther than `DespawnDistanceCm` **and** not seen for `DespawnUnseenSeconds`.
 - Never despawn: a civilian who is a witness with an unreported crime, fleeing, knocked down, dead (corpses follow
   `CorpseSeconds`), or in an interaction with the player.

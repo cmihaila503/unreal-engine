@@ -12,6 +12,11 @@ Spec: §1.20–21, §14 ("recovery timer configurable"), §53 ("no system may st
 
 ## First: confirm it reproduces
 
+> Review note: ARCHITECTURE's Recovery row already says the give-up applies "when it was a chase and he has not
+> moved" — the code may already hold a position check and even a cap. If it does, **reuse it** (extend it to the
+> Disabled-by-timeout path) instead of adding the `GiveUpForget*` fields below; two "has he moved" checks would
+> break spec §1.12. If the repro below doesn't loop, A1 is closed and only A2 (the cap) remains to check.
+
 `Tools/policetest.py`: park the player car (auto-hold) where PVA-T35 put it (impossible road), heat 60, one unit,
 run 300 s, `report trace` every 30 s. The bug is confirmed if the trace shows `Disabled` more than once, or
 `Recovery` entered more than `RecoveryEscapesBeforeAbandon`+1 times for the same target position. If it does

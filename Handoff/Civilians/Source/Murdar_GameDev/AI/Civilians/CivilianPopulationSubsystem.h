@@ -91,9 +91,11 @@ private:
 	struct FViewer
 	{
 		FVector PawnLocation = FVector::ZeroVector;
+		FVector SpawnCentre = FVector::ZeroVector;   // PawnLocation + look-ahead along his velocity
+		float CosViewCone = 0.f;                     // frustum half-diagonal + margin, as a cosine
+		float PixelsPerUnitAtUnitDistance = 0.f;     // viewport height / (2 tan(vertical half FOV))
 		FVector ViewLocation = FVector::ZeroVector;
 		FVector ViewDirection = FVector::ForwardVector;
-		float HalfFovDeg = 45.f;
 		const AActor* IgnoreActor = nullptr;
 	};
 
@@ -104,6 +106,7 @@ private:
 	void DespawnPass(const FViewer& Viewer, double Now);
 	void SpawnPass(const FViewer& Viewer, double Now);
 
+	float DespawnDistance() const;
 	int32 ComputeTarget(const FVector& PlayerLocation, const TArray<FResolvedArchetype>*& OutArchetypes) const;
 	bool FindSpawnPoint(const FViewer& Viewer, FVector& OutLocation);
 	UCivilianProfile* PickProfile(const TArray<FResolvedArchetype>& Archetypes);

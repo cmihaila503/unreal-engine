@@ -53,7 +53,8 @@ Also wire in the brain (small, Phase 1): when a civilian dies, call
 
 - Actor-based, reusing `AMurdarCharacter` + `AMurdarNPCAIController` (Civilian faction). Not Mass Crowd.
 - The population never steers; the brain does.
-- Visibility = in the view cone (+margin) **and** unoccluded to head or chest. Spawns only when not visible;
+- Visibility = in the view cone (+margin) **and** unoccluded by static geometry to head or chest **and** at least
+  `ImperceptiblePixelHeight` tall on screen. The spawn ring leads the player by his velocity. Spawns only when not visible;
   despawns only far + unseen for `DespawnUnseenSeconds`, never pinned ones.
 - Density from the `Zone.*` of the zone the player is in; default elsewhere.
 - Seeded random stream for repeatable tests (`RandomSeed`).
@@ -65,5 +66,5 @@ Also wire in the brain (small, Phase 1): when a civilian dies, call
   exists — right now there is only the mannequin).
 - Density follows the player's zone only, not the zone of each spawn point (a zone border near the player spawns at
   the player's zone density on both sides). Fine until zones are small; revisit in Phase 2.
-- Horizontal FOV used as a round cone: conservative (refuses a few spawns that are actually off-screen vertically).
+- The view test is a round cone through the frustum corners: conservative above/below the screen.
 - Civilians just stand (Idle) in Phase 1.

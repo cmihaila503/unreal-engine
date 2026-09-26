@@ -1,5 +1,11 @@
 # 03 — A3: StandDown ignores new crimes ("paid is paid")
 
+> **Decision first (review 2026-09-26).** "Paid is paid" may be *intended*: bribery is a first-class mechanic of
+> the game (PROJECT_OVERVIEW §1) and a crew that stays bought is a legitimate 1990s-Romania design. This file was
+> first written as a bug fix; it is really a design question. **Ask the user before applying.** If they keep
+> "paid is paid", apply only the narrow part: a crime committed *against this crew or its car* ends the deal
+> (nobody stays bought while being shot at).
+
 ## Problem
 
 ARCHITECTURE §3, StandDown row: "Lethal does **not** interrupt (paid is paid)". A bribe buys off what already

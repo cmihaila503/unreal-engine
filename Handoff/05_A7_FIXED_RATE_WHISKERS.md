@@ -9,6 +9,12 @@ RECON §3.2: `ProbeWhiskers` = 5 sweeps + 2 side rails **per frame**. At 144 FPS
 at 60; at 30 FPS a car at 110 km/h moves ~1 m between probes. Detection and the obstacle brake therefore depend on
 frame rate (spec §46 T38) and the cost scales with FPS × cars (T40).
 
+> Review note: the premise is weaker than first written. Probing *more* often at high FPS doesn't change what a
+> whisker sees much. The likelier sources of FPS-dependent driving are per-frame controllers that don't scale by
+> `DeltaTime` correctly (steering smoothing, P gains, `FInterpTo` speeds, the "stuck for 1.5 s" timers if they count
+> frames). Step 0 should therefore also grep `SteerTowards`/`ApplyInputs` for dt handling. If Step 0's columns
+> agree, keep this file only for the **cost** half (Phase 13), not for T38.
+
 ## Step 0 — measure first (spec §54: one parameter, test dependencies, regression, log)
 
 Run the Phase 3 lap (472 m, 110 km/h cap, 6 traffic cars) and the PVA-T04/T05 obstacle runs at `t.MaxFPS 30`,
