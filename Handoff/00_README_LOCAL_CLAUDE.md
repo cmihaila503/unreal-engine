@@ -51,6 +51,7 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | — | `Dialogue/` | **new system**: conversations as data, choices in the prompt line, **playable police bribe**, voiced barks — own README (needs Interaction) | low — touches the HUD prompt and weapon keys 1/2 while choosing |
 | — | `Economy/` | **new system**: wallet (`Stat.Money`), shops via dialogue, bribes charged when accepted, cash on bodies, optional 90s inflation — own README | low — new code only (cheats + tags) |
 | — | `Consequences/` | **new system**: open-city death → hospital, arrest → station (time, fine, confiscation, repeat offenders), partial regen + doctor — own README (needs Economy, TimeOfDay) | medium — changes what death/arrest do when the map has hospital/station starts |
+| — | `WorldState/` | **new system**: save brings back where you were, your car (place + damage), and opted-in placed actors — own README | medium — adds a field to `FNarrativeState` (version 2; old saves still load) |
 | — | `TimeOfDay/` | **new system**: game clock, sun, night, headlights, density by hour — own README | low |
 | — | `RearviewParanoia/` | **new system** „Paranoia în retrovizoare” — written against the real source; rules unit-tested; own README and prompt | medium — new, touches no existing behaviour except the car's input |
 | — | `Heat/` | **needs rework — see AUDIT** · Heat v2: decay, repeats, hysteresis, delayed witness reports — design in `Docs/HEAT_SYSTEM.md`; model unit-tested; own README and prompt | medium — changes how long pursuits last |
