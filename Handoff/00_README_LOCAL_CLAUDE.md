@@ -42,6 +42,7 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | 11 | `11_NOT_IN_SPEC_DECISIONS.md` | decisions the spec never asks for (suspect driver, save, …) | needs the user |
 | 12 | `12_TUNING_LOG_ENTRIES.md` | pre-filled §54 entries, results TBD | none |
 | 13 | `13_PROJECT_OVERVIEW_UPDATES.md` | what in PROJECT_OVERVIEW.md is stale since 2026-09-16 | none |
+| — | `Civilians/` | **new system**: civilian pedestrians — spec in `Docs/CIVILIAN_PEDESTRIAN_SPEC.md`, own README and prompts; independent of 01–13 | Phase 0 first |
 
 Background for every item: `Docs/POLICE_VEHICLE_AI_GAP_ANALYSIS.md` (IDs A*, B*, C* refer to it).
 
