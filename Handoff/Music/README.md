@@ -95,7 +95,7 @@ Unit: `g++ -std=c++17 -Wall -Wextra -Wshadow -I Handoff/Music/Source/Murdar_Game
 |---|---|---|
 | MUS-01 | drive calmly | `silence`, intensity 0, after 30 s no stems playing |
 | MUS-02 | `MurdarHeat 60` (pursuit) | `pursuit` within 0.1 s; intensity reaches ~0.75 in ~1 s |
-| MUS-03 | lose the police | `aftermath` ~6–8 s after the chase ends, then `silence` ~26 s later; intensity falls slowly |
+| MUS-03 | lose the police | `aftermath` ~6 s after the chase ends, `silence` ~26 s after it ended; intensity falls slowly |
 | MUS-04 | shoot near a pedestrian | `combat` at once; back down ~18 s after the last shot |
 | MUS-05 | at night, get a rearview tail (`MurdarTail`) | `suspense` |
 | MUS-06 | talk to someone during music | ", ducked" and quieter |
