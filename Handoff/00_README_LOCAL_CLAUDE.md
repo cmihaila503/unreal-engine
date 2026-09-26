@@ -46,19 +46,38 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | 11 | `11_NOT_IN_SPEC_DECISIONS.md` | decisions the spec never asks for (suspect driver, save, …) | needs the user |
 | 12 | `12_TUNING_LOG_ENTRIES.md` | pre-filled §54 entries, results TBD | none |
 | 13 | `13_PROJECT_OVERVIEW_UPDATES.md` | what in PROJECT_OVERVIEW.md is stale since 2026-09-16 | none |
-| — | `Missions/` | **new system**: missions/objectives as data assets — own README | low |
-| — | `Interaction/` | **new system**: one "E" for placed things (doors, phones, people) → `Event.Interact` — own README | low — touches `Input_Interact` and the HUD prompt block |
-| — | `Dialogue/` | **new system**: conversations as data, choices in the prompt line, **playable police bribe**, voiced barks — own README (needs Interaction) | low — touches the HUD prompt and weapon keys 1/2 while choosing |
-| — | `Economy/` | **new system**: wallet (`Stat.Money`), shops via dialogue, bribes charged when accepted, cash on bodies, optional 90s inflation — own README | low — new code only (cheats + tags) |
-| — | `Consequences/` | **new system**: open-city death → hospital, arrest → station (time, fine, confiscation, repeat offenders), partial regen + doctor — own README (needs Economy, TimeOfDay) | medium — changes what death/arrest do when the map has hospital/station starts |
-| — | `WorldState/` | **new system**: save brings back where you were, your car (place + damage), and opted-in placed actors — own README | medium — adds a field to `FNarrativeState` (version 2; old saves still load) |
-| — | `Music/` | **new system**: dynamic score — silence / unease / suspense / pursuit / combat / aftermath from stress, wanted, shots, rearview tails; MetaSound or stems; stings — own README | low — new code only |
-| — | `Menus/` | **new system**: Slate pause menu (continue, save only when calm, load, settings with display confirm, quit); money and hour shown only here — own README | low — new code; subtitle size + GASP look sensitivity are small opt-in patches |
-| — | `AILod/` | **new system**: AI significance LOD (tiers, budgets, hysteresis → tick intervals; engaged always full) + speed-based streaming radius + World Partition plan — own README | low — no edits to existing code; measure before/after |
-| — | `TimeOfDay/` | **new system**: game clock, sun, night, headlights, density by hour — own README | low |
-| — | `RearviewParanoia/` | **new system** „Paranoia în retrovizoare” — written against the real source; rules unit-tested; own README and prompt | medium — new, touches no existing behaviour except the car's input |
 | — | `Heat/` | **needs rework — see AUDIT** · Heat v2: decay, repeats, hysteresis, delayed witness reports — design in `Docs/HEAT_SYSTEM.md`; model unit-tested; own README and prompt | medium — changes how long pursuits last |
 | — | ~~`withdrawn/Civilians/`~~ | duplicate of UPopulationSubsystem/UPedestrianComponent · was: new system: civilian pedestrians — spec in `Docs/CIVILIAN_PEDESTRIAN_SPEC.md`, own README and prompts; independent of 01–13 | Phase 0 first |
+
+## New systems (written against the real source, each in its own folder)
+
+Unlike 01–13, these were written with the project's source open (kept out of this repo). Every folder has its own
+README with a paste-prompt, patches, manual steps, in-game tests and a Romanian summary; the pure rules of each
+are unit-tested here (g++ C++17, `-Wall -Wextra -Wshadow`, zero warnings). The Unreal files were **not compiled**.
+Integrate in this order — later ones use earlier ones:
+
+| Order | Folder | What | Needs | Unit checks | Risk |
+|---|---|---|---|---|---|
+| 1 | `TimeOfDay/` | game clock, sun, night, headlights, density by hour, `SkipHours` | — | 31 | low |
+| 2 | `Missions/` | missions/objectives as data assets | — | 27 | low |
+| 3 | `Interaction/` | one "E" for placed things → `Event.Interact` | — | 14 | low — `Input_Interact`, HUD prompt |
+| 4 | `Dialogue/` | conversations as data, choices in the prompt line, **playable police bribe**, voiced barks | 3 | 47 | low — HUD prompt, keys 1/2 while choosing |
+| 5 | `Economy/` | wallet `Stat.Money`, shops via dialogue, bribes charged when accepted, cash on bodies | (4) | 34 | low |
+| 6 | `Consequences/` | death → hospital, arrest → station (time, fine, confiscation, repeat offenders), regen + doctor | 1, 5 | 30 | medium — death/arrest when the map has the starts |
+| 7 | `WorldState/` | save brings back where you were, your car, opted-in placed actors | — | 21 | medium — `FNarrativeState` v2 |
+| 8 | `RearviewParanoia/` | „Paranoia în retrovizoare” | (1) | 46 | medium — the car's input |
+| 9 | `Music/` | dynamic score from stress, wanted, shots, tails | (4, 8) | 37 | low |
+| 10 | `Menus/` | Slate pause menu, save only when calm, settings | (2, 4, 7) | 38 | low |
+| 11 | `AILod/` | AI significance LOD + streaming radius + World Partition plan | — | 35 | low — measure before/after |
+
+"(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
+
+```
+Read Handoff/00_README_LOCAL_CLAUDE.md §New systems. Integrate the folders in the order of that table, one per
+session step: read the folder's README and follow its own paste-prompt; build and run its tests; report in Romanian
+IMPLEMENTED/TESTED/FAILED/BLOCKED/NEXT and wait for my OK before the next folder. Never modify existing .uasset/.umap
+without asking; never save the level from a script.
+```
 
 Background for every item: `Docs/POLICE_VEHICLE_AI_GAP_ANALYSIS.md` (IDs A*, B*, C* refer to it).
 
