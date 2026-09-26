@@ -48,6 +48,7 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | 13 | `13_PROJECT_OVERVIEW_UPDATES.md` | what in PROJECT_OVERVIEW.md is stale since 2026-09-16 | none |
 | — | `Missions/` | **new system**: missions/objectives as data assets — own README | low |
 | — | `Interaction/` | **new system**: one "E" for placed things (doors, phones, people) → `Event.Interact` — own README | low — touches `Input_Interact` and the HUD prompt block |
+| — | `Dialogue/` | **new system**: conversations as data, choices in the prompt line, **playable police bribe**, voiced barks — own README (needs Interaction) | low — touches the HUD prompt and weapon keys 1/2 while choosing |
 | — | `TimeOfDay/` | **new system**: game clock, sun, night, headlights, density by hour — own README | low |
 | — | `RearviewParanoia/` | **new system** „Paranoia în retrovizoare” — written against the real source; rules unit-tested; own README and prompt | medium — new, touches no existing behaviour except the car's input |
 | — | `Heat/` | **needs rework — see AUDIT** · Heat v2: decay, repeats, hysteresis, delayed witness reports — design in `Docs/HEAT_SYSTEM.md`; model unit-tested; own README and prompt | medium — changes how long pursuits last |
