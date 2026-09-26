@@ -16,10 +16,10 @@ Side Effects: TBD
 
 ---
 Date: TBD
-Parameter: CrimeSeverity (new, UMurdarAISettings); StandDown interruption rule
-Owner: UMurdarAISettings (table), AMurdarPoliceAIController (rule)
+Parameter: StandDown interruption rule; UFactionMemorySubsystem::GetCrimeHeat (read-only accessor, no new table)
+Owner: UFactionMemorySubsystem (crime heat table, unchanged), AMurdarPoliceAIController (rule)
 Old: StandDown not interruptible ("paid is paid")
-New: interrupted by a crime after the bribe that is more severe than the covered one, or committed against this unit
+New: interrupted by a witnessed crime after the bribe whose heat exceeds the worst covered crime's, or committed against this unit
 Reason: gap analysis A3 — bribe-then-attack exploit
 Tests: BRIBE-01..04
 Result: TBD
@@ -60,7 +60,7 @@ Side Effects: none expected
 
 ---
 Date: TBD
-Parameter: HeatToAggression, SeverityAggressionWeight, DamageAggressionWeight, *Aggressive ends — ONE consumer per entry (follow distance first)
+Parameter: AggressionAtStop/Pursuit/Lethal/MaxHeat, SeverityAggressionWeight, DamageAggressionWeight, *Aggressive ends — ONE consumer per entry (follow distance first)
 Owner: UPoliceDrivingProfile
 Old: single Lethal step
 New: Aggression01 lerp between calm (existing) and aggressive values

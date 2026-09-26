@@ -22,9 +22,12 @@ Proposal:
 
 ## C2 — Save / load during a pursuit
 
-Proposal: pursuits are not saved. Saving is blocked while any unit is in Pursuit/Combat/Searching on the player;
-loading clears all police AI state except heat and bribes (already saved). One line in the save code + a HUD
-"can't save now" message.
+Facts (PROJECT_OVERVIEW §4.1): saves are tags and numbers only (`UNarrativeStateSubsystem`, < 10 KB, no object
+refs); heat (`Stat.Heat`) and bribes are mirrored in; `MurdarReach` / checkpoints **autosave**.
+
+Proposal: pursuits are not saved (they can't be — no object refs by design). A checkpoint autosave reached while a
+unit is in Pursuit/Combat/Searching on the player is **deferred** until the pursuit ends, not dropped (blocking it
+could lose story progress). Loading clears all police AI state; heat and bribes come back from the save as today.
 
 ## C4 — Police collateral (civilians, pedestrians)
 
@@ -34,9 +37,13 @@ collision publishes `Event.Police.Collateral` (not a crime, not heat for the pla
 
 ## C5 — Player-facing feedback
 
-Proposal: HUD wanted indicator from `EWantedLevel`; a search circle on the minimap from the police's *belief*
-(`PredictTrack` + search legs), never the truth; radio barks on the existing `Event.Police.*` tags. UI assets are a
-manual task.
+Constraint (PROJECT_OVERVIEW §1, §5): the project's rule is **"felt, not shown" — no bar, no number**. A wanted-level
+HUD or a minimap search circle would break it; do not propose them.
+
+Proposal within the rule: the player reads the police through the world — sirens (Phase 6), audible radio barks on
+the existing `Event.Police.*` tags via `AMurdarHUD::ShowSubtitle` + a voice line ("unitatea 4, suspect pierdut pe
+…"), the tension meter reacting to `Event.Police.PursuitStarted/Combat` (it already listens to the bus), and the
+officers' own behaviour (lights, pulling alongside). If the user wants any explicit indicator, that's their call.
 
 ## C6 — Hiding / swapping cars
 
@@ -45,9 +52,12 @@ Searching. Swapping cars already works through `MatchesKnownVehicle()`; add a te
 
 ## C7 — Surface grip, weather, night
 
-Proposal: `UMurdarAISettings::WorldGripScale` (1 dry, ~0.7 wet) multiplied into `LateralGripCms` and
-`BrakingDecel`; sight radius × a light-level factor at night. Measure with `griptest.py` on the wet surface before
-choosing the number.
+Prerequisite (PROJECT_OVERVIEW §10): `UPhysicalMaterial` friction per surface (asphalt/gravel/mud) is **not
+authored yet** — the wheel raycast already reads it. Do that first (manual asset task).
+
+Proposal: the planner's grip follows the surface under the car: `LateralGripCms × (surface friction / asphalt
+friction)`, same for `BrakingDecel`; weather later as a global multiplier on top. Sight radius × a light-level factor
+at night. Measure with `griptest.py` per surface before choosing any number.
 
 ## C8 — World Partition / streaming
 
@@ -76,15 +86,19 @@ Proposal: a difficulty setting chooses the profile mix of spawned units and scal
 
 ## C12 — Siren concurrency
 
-Proposal: a `USoundConcurrency` asset (max 4, stop quietest) on the siren loop; Doppler enabled on the attenuation.
-Manual asset task when the siren sound exists (EDITOR_TASKS 8b).
+The siren is still silent (EDITOR_TASKS 8b). All project audio today is synthesised placeholder WAVs made by the
+`Content/Python/synth_*.py` scripts (PROJECT_OVERVIEW §6) — a `synth_siren.py` in the same style (two-tone
+Romanian-era "wail"/"hi-lo" sweep, loopable) unblocks Phase 6's audio with no licensing issue; it creates a *new*
+asset, which the project already allows.
+
+Then: a `USoundConcurrency` (max 4, stop quietest) on the siren loop; Doppler on the attenuation.
 
 ## C13 — Off-duty police obey traffic rules
 
 Proposal: Patrol/Returning use the traffic controller's rules (junction reservations from 08, speed limit, no
 navmesh shortcuts); only emergency relaxes them. Write it into ARCHITECTURE §3 Patrol row.
 
-## C14 — Multiplayer
+## C14 — Multiplayer — resolved
 
-Question for the user: is MURDAR single-player? If yes, one line in ARCHITECTURE §1 ("no replication; all AI
-server=local"). If not, this whole system needs an authority model before Phase 11.
+Single-player, `bReplicates = false` everywhere (PROJECT_OVERVIEW §1). Add one line to ARCHITECTURE §1:
+"Single-player; no replication. All AI runs locally on the game thread." Nothing else to do.

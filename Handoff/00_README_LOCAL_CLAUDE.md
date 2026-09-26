@@ -1,6 +1,7 @@
 # Handoff — changes prepared in a cloud session, to be applied by local Claude Code
 
-Prepared 2026-09-26 in a cloud session that had **only the five Docs files**, not the source. Nothing here was
+Prepared 2026-09-26 in a cloud session that had **only the five Police AI Docs files and PROJECT_OVERVIEW.md**,
+not the source. Nothing here was
 compiled or run. Every code block is a starting point written against the names the Docs mention
 (`AMurdarPoliceAIController`, `UPoliceDrivingProfile`, `UVehiclePursuitComponent`, `EPoliceState`, `Pick()`,
 `EnterState()`, `UGameEventSubsystem`, `UFactionMemorySubsystem`, `UPoliceResponseDirector` …). Wherever the real
@@ -40,8 +41,25 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | 10 | `10_TESTS_TO_ADD.md` | new tests for all of the above + missing PVA IDs | none |
 | 11 | `11_NOT_IN_SPEC_DECISIONS.md` | decisions the spec never asks for (suspect driver, save, …) | needs the user |
 | 12 | `12_TUNING_LOG_ENTRIES.md` | pre-filled §54 entries, results TBD | none |
+| 13 | `13_PROJECT_OVERVIEW_UPDATES.md` | what in PROJECT_OVERVIEW.md is stale since 2026-09-16 | none |
 
 Background for every item: `Docs/POLICE_VEHICLE_AI_GAP_ANALYSIS.md` (IDs A*, B*, C* refer to it).
+
+## Project rules that apply to every file (from Docs/PROJECT_OVERVIEW.md)
+
+- Work in the **main checkout** only — never launch the editor from a git worktree (full rebuild + all shaders).
+- Build: `"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Murdar_GameDevEditor Win64
+  Development -Project="E:\Unreal Engine\Murdar_GameDev\Murdar_GameDev.uproject" -WaitMutex` (editor closed).
+- **Never save the level from a script** (`L_Sandbox` has uncommitted work). Save named assets explicitly.
+- **A changed or new `UPROPERTY` default does not reach assets that already serialise that property.** New
+  properties (all of the ones in this handoff) take the class default, but verify on the six profile assets through
+  `Tools/uepy.py` — read the values back.
+- Python traps: bools drop the `b`; arrays of structs iterate as copies (write back); `EditorAssetLibrary` lies
+  during PIE; curve keys are not settable (hence file 07 uses scalars).
+- The AI decision functions are plain switches **on purpose** (StateTree migration path). Add cases; don't
+  restructure them.
+- "Felt, not shown": no new HUD bars/numbers (see 11 C5).
+- The user works in Romanian — report in Romanian.
 
 ## Rule used everywhere
 

@@ -12,49 +12,46 @@ StandDown is interrupted by a crime that is **(a)** reported after the bribe **a
 than the worst crime the bribe covered, or committed against this unit (its crew or its car).
 Everything else keeps today's behaviour (a bribed unit does not re-engage for heat alone).
 
-## Change 1 — severity table (world rule, not personality → UMurdarAISettings)
+## Change 1 — severity = the faction memory's existing crime heat table (no new table)
+
+`UFactionMemorySubsystem::ReportCrime` already maps each crime to a heat amount, "kept deliberately on one screen"
+(PROJECT_OVERVIEW §4.8): speeding 6, reckless 10, weapon brandished 20, assault 22, hit police 25, hit pedestrian 30,
+evading 30, shots fired 35, murder 80, refused bribe 15. That *is* a severity scale. Adding a second table would
+break spec §1.12 (one source of truth) and the two would drift.
+
+Expose it read-only, next to where the table lives:
 
 ```cpp
-// UMurdarAISettings (DeveloperSettings, DefaultGame.ini)
-
-/** Relative severity of each crime tag, used to decide whether a new crime is covered by a bribe
- *  (StandDown) and, later, by escalation (spec §36). Higher = worse. Unlisted tags count as 0. */
-UPROPERTY(EditAnywhere, config, Category = "Police", meta = (Categories = "Crime"))
-TMap<FGameplayTag, int32> CrimeSeverity;
+// UFactionMemorySubsystem.h (public)
+/** Heat a crime adds (the ReportCrime table). Used as the crime's severity by StandDown (bribe coverage) and
+ *  escalation (spec §36). 0 for tags that are not crimes. */
+float GetCrimeHeat(FGameplayTag CrimeTag) const;   // ADAPT: return the same value ReportCrime uses — refactor
+                                                    // ReportCrime to call this, so there is one lookup
 ```
 
-`Config/DefaultGame.ini`, under `[/Script/Murdar_GameDev.MurdarAISettings]` (hand edit; tags from RECON §3.5):
-
-```ini
-+CrimeSeverity=(("Crime.Speeding", 1))
-+CrimeSeverity=(("Crime.Reckless", 2))
-+CrimeSeverity=(("Crime.Evading", 3))
-+CrimeSeverity=(("Crime.HitPedestrian", 4))
-+CrimeSeverity=(("Crime.Weapon", 4))
-+CrimeSeverity=(("Crime.Assault", 5))
-+CrimeSeverity=(("Crime.HitPolice", 6))
-+CrimeSeverity=(("Crime.Shooting", 7))
-+CrimeSeverity=(("Crime.Murder", 8))
-```
-
-ADAPT: check the exact ini syntax for a `TMap<FGameplayTag,int32>` by setting one entry in Project Settings and
-reading what the editor writes to `DefaultGame.ini`; copy that form. (Setting it through the editor UI is fine too.)
+Order check (does "more severe" read right with these numbers?): speeding < reckless < weapon < assault < hit police
+< hit pedestrian = evading < shots < murder. Hit police ranks below hit pedestrian — that's fine here, because a crime
+**against this unit** interrupts StandDown regardless of severity (rule (b) above).
 
 ## Change 2 — the controller
 
 ```cpp
 // AMurdarPoliceAIController.h (private)
 double BribeTime = -1.0;
-int32 BribeCoveredSeverity = 0;
+float BribeCoveredHeat = 0.f;
 bool bStandDownBroken = false;
 FString StandDownBreakReason;
 ```
 
-- On entering StandDown (the bribe / ticket path): `BribeTime = Now`; `BribeCoveredSeverity` = the max severity of
-  the crimes in the faction memory's crime list (RECON §3.3, 64 kept) with a time ≤ now. ADAPT: crime record
-  field names.
-- Subscribe to `Crime` (the parent tag — the bus matches the hierarchy, RECON §3.5) in `OnPossess`; ADAPT the
-  unsubscribe (whatever handle `Subscribe` returns) in `OnUnPossess` / `EndPlay` — see 04.
+- On entering StandDown (the bribe / ticket path): `BribeTime = Now`; `BribeCoveredHeat` = the max `GetCrimeHeat` of
+  the *witnessed* crimes in the faction memory's crime list (RECON §3.3, 64 kept) with a time ≤ now. Unwitnessed
+  crimes never enter that list (PROJECT_OVERVIEW §4.8) — correct: the police can't forgive what they don't know.
+  ADAPT: crime record field names.
+- Important: the bus event fires for a crime only if it is published for witnessed crimes. ADAPT: check whether
+  `Crime.*` is published before or after the witness filter; the rule must use witnessed crimes only (a bribed cop
+  who didn't see the murder has no reason to react).
+- Subscribe to `Crime` (the parent tag — the bus matches the hierarchy, RECON §3.5) in `OnPossess`; unsubscribe in `OnUnPossess` / `EndPlay` — see 04. The bus supports
+  unsubscribing, even from inside a callback (deferred to the end of the publish; PROJECT_OVERVIEW §4.1).
 
 ```cpp
 void AMurdarPoliceAIController::OnCrimeEvent(const FGameEvent& Ev)
@@ -63,18 +60,17 @@ void AMurdarPoliceAIController::OnCrimeEvent(const FGameEvent& Ev)
     {
         return;
     }
-    const UMurdarAISettings* S = GetDefault<UMurdarAISettings>();
-    const int32* Sev = S->CrimeSeverity.Find(Ev.Tag);
-    const int32 Severity = Sev ? *Sev : 0;
+    const UFactionMemorySubsystem* Memory = GetWorld()->GetSubsystem<UFactionMemorySubsystem>();
+    const float Heat = Memory ? Memory->GetCrimeHeat(Ev.Tag) : 0.f;
 
     // ADAPT: how a crime names its victim. Payload/Source per FGameEvent {Tag, Source, Location, Magnitude, Payload}.
     const bool bAgainstUs = IsOwnCrewOrCar(Ev /* victim */);
 
-    if (bAgainstUs || Severity > BribeCoveredSeverity)
+    if (bAgainstUs || Heat > BribeCoveredHeat)
     {
         bStandDownBroken = true;
-        StandDownBreakReason = FString::Printf(TEXT("%s after bribe (sev %d > %d%s)"),
-            *Ev.Tag.ToString(), Severity, BribeCoveredSeverity, bAgainstUs ? TEXT(", against us") : TEXT(""));
+        StandDownBreakReason = FString::Printf(TEXT("%s after bribe (heat %.0f > %.0f%s)"),
+            *Ev.Tag.ToString(), Heat, BribeCoveredHeat, bAgainstUs ? TEXT(", against us") : TEXT(""));
     }
 }
 ```
@@ -90,6 +86,6 @@ void AMurdarPoliceAIController::OnCrimeEvent(const FGameEvent& Ev)
 1. Bribe, then `MurdarHeat` to Lethal with no new crime → unit stays in StandDown (unchanged behaviour).
 2. Bribe after speeding, then commit `Crime.Shooting` in view → StandDown → Combat within ≤ 0.5 s; trace reason
    names the tag.
-3. Bribe after a shooting (covered severity 7), then speed → stays in StandDown.
+3. Bribe after a shooting (covered 35), then speed (6) → stays in StandDown.
 4. Bribe, then hit the paid unit's car (`Crime.HitPolice` or `Event.Vehicle.Crashed` with this car — ADAPT which
-   one the project raises) → interrupts even if severity is lower than covered.
+   one the project raises) → interrupts even if its heat is lower than covered.

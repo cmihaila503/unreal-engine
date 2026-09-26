@@ -8,6 +8,10 @@ Timers at 0.25–1 s (controller, memory, director) and bus lambdas hold referen
 cars. Targets die, cars are destroyed or abandoned (`AbandonCar`), officers despawn, PIE stops, levels unload.
 A raw `AActor*` held across a timer tick is a crash; a lambda capturing `this` and outliving it is a crash.
 
+Project convention (PROJECT_OVERVIEW §5, "the bus over pointers"): systems publish `Event.*` and don't hold
+pointers to each other. The police work (director roles, search legs, chase slots, targets) is where that rule is
+most likely bent, so start the audit there.
+
 ## Audit (do this first, report the list)
 
 ```
@@ -23,7 +27,7 @@ For every **member** (not local/parameter) found in the police/pursuit/director/
 | `UPROPERTY() TObjectPtr<>` / `UPROPERTY() AActor*` | GC-safe but can point at a *pending-kill* actor: check `IsValid(x)` before use. |
 | raw pointer without UPROPERTY | **bug**. → `TWeakObjectPtr<>` and `.Get()` + null check at every use. |
 | inside a USTRUCT held in a TArray/TMap in a subsystem (e.g. roles per unit, tracks) | `TWeakObjectPtr<>`; prune invalid entries at the start of each subsystem tick. |
-| bus `Subscribe` lambda capturing `this` | capture `TWeakObjectPtr<ThisClass> WeakThis = this;` and early-out if `!WeakThis.IsValid()`; **and** unsubscribe in `EndPlay`/`OnUnPossess`/`Deinitialize`. If the bus has no unsubscribe, that is the finding — report it, add one. |
+| bus `Subscribe` lambda capturing `this` | capture `TWeakObjectPtr<ThisClass> WeakThis = this;` and early-out if `!WeakThis.IsValid()`; **and** unsubscribe in `EndPlay`/`OnUnPossess`/`Deinitialize`. The bus has an unsubscribe (safe even inside a callback — deferred to the end of the publish, PROJECT_OVERVIEW §4.1); the finding is any subscriber that never calls it. |
 | `SetTimer` on an actor/component | `GetWorld()->GetTimerManager().ClearAllTimersForObject(this)` in `EndPlay` (actors/components) / `OnUnPossess` (controllers — the pawn changes) / `Deinitialize` (subsystems). |
 
 Pattern:
@@ -47,7 +51,8 @@ Handle = Bus->Subscribe(Tag, [WeakThis](const FGameEvent& Ev)
 void AMurdarPoliceAIController::EndPlay(const EEndPlayReason::Type Reason)
 {
     GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
-    // ADAPT: Bus->Unsubscribe(Handle);
+    // ADAPT: the bus's unsubscribe call and handle type
+    // Bus->Unsubscribe(Handle);
     Super::EndPlay(Reason);
 }
 ```
