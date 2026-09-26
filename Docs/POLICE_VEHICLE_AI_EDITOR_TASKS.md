@@ -13,7 +13,12 @@ never touches L_Sandbox. ZoneGraph is enabled in the .uproject; lane profile `Tw
 
 ## Road network by hand (for the real map)
 
-1. **Enable the ZoneGraph plugin** — Edit ▸ Plugins ▸ "ZoneGraph" (Runtime/AI), restart. (Or add
+Status: step 1 is **done** (ZoneGraph is enabled in the .uproject, the module dependency exists since Phase 2).
+Step 2 is done for `PoliceAI_Test_Intersection` by script; `PoliceAI_Test_StraightRoad` does not exist yet. Step 3
+(lane tags) — check `Config/DefaultPlugins.ini`: only the `TwoWay_350` profile is recorded here; the `Emergency` and
+`Pedestrian` tags are not confirmed. Steps are kept for the real city map.
+
+1. ~~**Enable the ZoneGraph plugin**~~ (done) — Edit ▸ Plugins ▸ "ZoneGraph" (Runtime/AI), restart. (Or add
    `{"Name": "ZoneGraph", "Enabled": true}` to `Murdar_GameDev.uproject` — the code side will add the module
    dependency when Phase 2 starts.)
 2. **A test map with roads** — `Content/Murdar/Maps/PoliceAI_Test_StraightRoad` and `PoliceAI_Test_Intersection`

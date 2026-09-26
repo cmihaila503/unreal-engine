@@ -64,11 +64,16 @@ Existing states with their contract as of Phase 1. Every timing/distance is a `U
 | **Searching** (Phase 7) | track stale (*LoseSightSeconds*) or the fix reached empty (*FixReachedCm*); legs of `DriveTo` over the junction exits, exit = my rank among searching units (+ leg count) | Pursuit / Combat on a report newer than the search's own; Patrol after *SearchSeconds* | Lethal (via contact) | *SearchSeconds* | nobody found | — |
 | **Disabled** (Phase 5) | `Damage01 ≥ DisabledDamage01`, rolled > *DisabledRollDeg* for *DisabledRollSeconds*, or recovery timed out; `Stop`, target released, `Event.Police.UnitDisabled` (+ `PursuitEnded` if chasing) | Patrol after *DisabledSeconds* if upright and not wrecked; else never | none | — | — | — |
 
-Planned (spec §5), to be added when their phase gives them behaviour, not before: `Responding` (Phase 6/8: an
-order with a location), `Positioning` / `Roadblocking` (Phase 9), `Searching` (Phase 7: split out of Pursuit's
-search upkeep so it can be distributed by §38), `Returning` (Phase 10). `Recovery` and `Disabled` arrived with Phase 5,
-`Searching` with Phase 7 (legs over the exits of the junction the track leads to, one exit per searching unit by rank). The decision function stays a switch until then; StateTree is available in the engine if it grows past
-readability.
+Arrived: `Recovery` and `Disabled` (Phase 5), `Searching` (Phase 7: legs over the exits of the junction the track
+leads to, one exit per searching unit by rank).
+
+Still planned (spec §5), to be added when their phase gives them behaviour, not before: `Responding` (Phase 10: a
+director order with a location), `Returning` (Phase 10/11: event over → route to the patrol zone, spec §40),
+`StopConfirmed` / `SecuringVehicle` / `OfficersExiting` / `FootHandoff` (Phase 12, spec §31–32). Phase 9 did **not**
+add `Positioning` / `Roadblocking` as states: the interceptor's roadblock runs as a tactic inside Pursuit/Combat
+(`DriveIntercept`, `TacticNote`). Spec §5 lists them as states; this is a recorded deviation, not an omission — see
+`POLICE_VEHICLE_AI_GAP_ANALYSIS.md` G-S1. The decision function stays a switch; StateTree is available in the engine
+if it grows past readability.
 
 Decision trace (spec §43): `Decide()` names the reason for every transition (`Pick(state, reason)`); `EnterState`
 records `time old->new: reason` into an 8-entry ring (`GetDecisionTrace()`), logs it, and `GetTelemetry().DecisionReason`
@@ -77,8 +82,9 @@ carries the current one.
 ## 4. Driver modes — `EPursuitMode` (existing)
 
 `Idle, DriveTo, Follow, Intercept, PullAlongside, PIT, Ram, Block, Stop, BoxRear, SideSweep` (the last two Phase 9). Each maps to an aim point and a desired
-speed in the target's frame; `SteerTowards` does the rest. Tactics planned on top (Phase 9): `Roadblock` (park across
-a lane at a point), `SideSweep`, chase-slot offsets for `Follow` (role-dependent), `LaneFollow` (Phase 2/3, ZoneGraph).
+speed in the target's frame; `SteerTowards` does the rest. Since Phase 9: `SideSweep` and `BoxRear` are modes;
+chase-slot offsets are `SetChaseSlot` (Phase 8); the roadblock is `DriveTo` + hold inside `DriveIntercept` (no own
+mode); lane following is not a mode — every mode's aim goes through the lane route in `RouteAim` (Phase 2/3).
 
 The aim point goes through the route layer (`RouteAim`): a clear line the tyres can hold at our speed is driven as a
 line; otherwise the lane route (committed - a fresh plan replaces it only when clearly shorter), the navmesh path off
@@ -120,8 +126,11 @@ car-side value it sets is `UVehiclePursuitComponent::MaxSpeedKph` on possess.
 
 ## 7. Interfaces the later phases plug into
 
-- Director → unit: an order (`intent, target, location, role`) — to be added in Phase 8 as `ReceiveOrder`; until
-  then the unit self-dispatches from the memory exactly as today.
+- Director → unit: an order (`intent, target, location, role`). Per the Phase 8/9 reports (to be confirmed in the
+  code — these docs were edited without the source), Phase 8 delivered only the **role** half (the
+  director writes `EPoliceRole`, the controller reads it each Think). The order half (`ReceiveOrder` with intent and
+  location — needed for `Responding`, roadblock picks by the director, world events) is still open: Phase 10.
+  Until then the unit self-dispatches from the memory.
 - Memory → many targets: `FFactionTrack`/`FKnownVehicleRecord` keyed by a target handle (Phase 11).
 - Road layer → driver: `MurdarRoad::{NearestLane, RouteAlongLanes, AdvanceAlongLanes, TrackLane / AdvanceFromTrack,
   DistanceToJunction(FromTrack)}` returning polylines the existing `RouteAim` can consume (Phase 2), the target's

@@ -108,6 +108,8 @@ on one car.
   that parks a cop and later expects it to move must `WakeAllRigidBodies()` (`AMurdarVehicle::BeginAIDriving`
   already does; a parked cop woken by throttle relies on Chaos waking on force — **not verified**, see §7).
 - Lateral grip on asphalt ≈ 1.1 g; `UVehiclePursuitComponent::LateralGripCms` 750 (0.76 g) is the planner's cap.
+  *Superseded 2026-09-20:* `Tools/griptest.py` measured the police car at 0.73 g @ 34 km/h, 0.92 g @ 48 km/h, sliding
+  ~0.9 g, and `LateralGripCms` is now **850** (test report, "Live recordings"). The 1.1 g figure is not the police car.
 
 ---
 
@@ -260,7 +262,11 @@ the pursuit component uses today.
 
 *2026-09-20 update:* the ZoneGraph A* usage, authoring without Mass, and `AZoneGraphData` building in the editor are
 now **verified** — `AI/MurdarRoadNavigation.cpp` compiles and routes on a generated 156-lane grid (see the test
-report, Phase 2). Remaining unknowns are the last four below.
+report, Phase 2). Phase 3 then replaced the plugin A* with the project's own lane Dijkstra (the A*'s adjacent-lane
+hop caused the −171° junction aim), so the first item is moot. The sleeping-car item was **resolved** in Phase 1
+(test report, "Destination after parking": an AI-driven car never sleeps because the driver holds the handbrake
+every tick; the sleeping case exists only for a driverless car). Remaining open: SignificanceManager fit, N-car perf,
+ADAS cruise control quality.
 
 - `FZoneGraphAStar` usage: constructing `FZoneGraphAStarWrapper` from storage and running `FindPath` with a
   `FZoneGraphPathFilter` — header read, never compiled here. Phase 2 spike before any design depends on it.
