@@ -1,3 +1,7 @@
+> **Superseded in part — read `Handoff/AUDIT_VS_SOURCE_2026-09-26.md` §Heat v2 first. Do not apply as is:** the witness
+> queue duplicates `UPedestrianComponent::PlanCall`/`TryClaimCall`, the decay delay duplicates `LoseSightSeconds`,
+> and the model lacks the non-violent-below-Lethal cap.
+
 # Heat v2 — handoff for local Claude Code
 
 Design and tests: `Docs/HEAT_SYSTEM.md` (Romanian summary at the top). Decisions by the user (2026-09-26): one
