@@ -54,6 +54,7 @@ Do not modify .uasset/.umap. Do not change several tuning parameters at once (sp
 | — | `WorldState/` | **new system**: save brings back where you were, your car (place + damage), and opted-in placed actors — own README | medium — adds a field to `FNarrativeState` (version 2; old saves still load) |
 | — | `Music/` | **new system**: dynamic score — silence / unease / suspense / pursuit / combat / aftermath from stress, wanted, shots, rearview tails; MetaSound or stems; stings — own README | low — new code only |
 | — | `Menus/` | **new system**: Slate pause menu (continue, save only when calm, load, settings with display confirm, quit); money and hour shown only here — own README | low — new code; subtitle size + GASP look sensitivity are small opt-in patches |
+| — | `AILod/` | **new system**: AI significance LOD (tiers, budgets, hysteresis → tick intervals; engaged always full) + speed-based streaming radius + World Partition plan — own README | low — no edits to existing code; measure before/after |
 | — | `TimeOfDay/` | **new system**: game clock, sun, night, headlights, density by hour — own README | low |
 | — | `RearviewParanoia/` | **new system** „Paranoia în retrovizoare” — written against the real source; rules unit-tested; own README and prompt | medium — new, touches no existing behaviour except the car's input |
 | — | `Heat/` | **needs rework — see AUDIT** · Heat v2: decay, repeats, hysteresis, delayed witness reports — design in `Docs/HEAT_SYSTEM.md`; model unit-tested; own README and prompt | medium — changes how long pursuits last |

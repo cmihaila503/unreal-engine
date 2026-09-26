@@ -62,7 +62,7 @@ The menu is ZOrder 50 over the HUD (10) and dims the game; the HUD keeps drawing
 - `Content/Murdar/Audio/SCM_Murdar` (Sound Class Mix), classes `SC_Master`, `SC_Music`, `SC_Effects`, `SC_Voices`.
   Set them in Project Settings > Murdar Menus. Put sounds in classes: music stems / MetaSound → SC_Music; dialogue
   and police voices → SC_Voices; the rest (weapons, cars, tension drone) → SC_Effects. Without the mix, the sliders
-  are saved but change nothing (the log says nothing; the README of the report must mention it).
+  are saved but change nothing (nothing is logged, so the test report must say whether the mix was set).
 
 ## Tests
 
