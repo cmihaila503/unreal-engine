@@ -110,6 +110,24 @@ void UTimeOfDaySubsystem::SetHour(float Hour)
 	SaveToState();
 }
 
+void UTimeOfDaySubsystem::SkipHours(float Hours)
+{
+	if (Hours <= 0.f) { return; }
+	const int32 DayBefore = Clock.GetDay();
+	Clock.Advance(Hours * 60.f, MurdarTime::MinutesPerDay); // 1440 "seconds" per day = one minute per unit
+	if (UGameEventSubsystem* Bus = UGameEventSubsystem::Get(this))
+	{
+		for (int32 D = DayBefore + 1; D <= Clock.GetDay(); ++D)
+		{
+			FGameEvent E; E.Tag = Tag(TEXT("Event.Time.NewDay")); E.Magnitude = float(D); Bus->Publish(E);
+		}
+	}
+	UpdateNight(/*bPublish*/ true);
+	ApplySun();
+	SweepHeadlights();
+	SaveToState();
+}
+
 void UTimeOfDaySubsystem::Update()
 {
 	const UTimeOfDaySettings* S = GetDefault<UTimeOfDaySettings>();

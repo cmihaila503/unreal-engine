@@ -31,6 +31,8 @@ public:
 
 	/** Story / cheats. Hour 0..24. */
 	UFUNCTION(BlueprintCallable, Category = "Murdar|Time") void SetHour(float Hour);
+	/** Time passes off-screen (a night in a cell, hours in hospital): forward only, days roll, Event.Time.NewDay each. */
+	UFUNCTION(BlueprintCallable, Category = "Murdar|Time") void SkipHours(float Hours);
 	UFUNCTION(BlueprintCallable, Category = "Murdar|Time") void SetFrozen(bool bFreeze) { bFrozen = bFreeze; }
 	/** Cheat: real seconds per game day (< 0 = back to the settings). */
 	void SetDayLengthOverride(float RealSeconds) { DayLengthOverride = RealSeconds; }

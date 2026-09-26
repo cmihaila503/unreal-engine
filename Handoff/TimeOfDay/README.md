@@ -8,7 +8,7 @@ povestea. Fără UI: ora se citește din cer. Un capitol își poate alege ora d
 „Paranoia în retrovizoare” folosește noaptea de aici, în loc de setarea fixă.
 
 **Verified here:** `TimeOfDayRules.h` (clock, sun angles, light level, hourly curves) — g++ C++17 `-Wall -Wextra
--Wshadow`, 4 tests / 28 checks pass. **Not compiled:** the Unreal files. Written against the real source
+-Wshadow`, 5 tests / 31 checks pass. **Not compiled:** the Unreal files. Written against the real source
 (`UNarrativeStateSubsystem::Get/GetValue/SetValue`, `Event.State.Loaded`, `UGameEventSubsystem::Subscribe/Unsubscribe`,
 `AMurdarVehicle::IsAIDriven/SetHeadlights/AreHeadlightsOn`, `UPopulationSubsystem::ManagePopulation`, `UChapterDefinition`).
 
@@ -119,7 +119,7 @@ void UDirectorCheats::MurdarClock() { if (UTimeOfDaySubsystem* T = UTimeOfDaySub
 
 ## Tests
 
-Unit: `g++ -std=c++17 -Wall -Wextra -Wshadow -I Handoff/TimeOfDay/Source/Murdar_GameDev/Director/TimeOfDay Handoff/TimeOfDay/Tests/time_of_day_test.cpp -o tod && ./tod` → `28 checks, 0 failed`.
+Unit: `g++ -std=c++17 -Wall -Wextra -Wshadow -I Handoff/TimeOfDay/Source/Murdar_GameDev/Director/TimeOfDay Handoff/TimeOfDay/Tests/time_of_day_test.cpp -o tod && ./tod` → `31 checks, 0 failed`.
 
 | ID | Test | Pass |
 |---|---|---|

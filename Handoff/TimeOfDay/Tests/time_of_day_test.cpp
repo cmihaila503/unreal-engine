@@ -29,6 +29,14 @@ int main()
 		NEAR(K.GetMinutes(), 120.f, 1e-3);
 	});
 
+	Run("clock: skipping hours (SkipHours) rolls several days", [&]
+	{
+		FGameClock K(22.f * 60.f, 1);
+		CHECK(K.Advance(30.f * 60.f, MinutesPerDay)); // 30 h in a cell: 22:00 day 1 -> 04:00 day 3
+		NEAR(K.GetMinutes(), 4.f * 60.f, 1e-2);
+		CHECK(K.GetDay() == 3);
+	});
+
 	Run("sun: horizon at sunrise and sunset, highest at mid-day, below at night", [&]
 	{
 		NEAR(SunAngles(C.SunriseHour, C).PitchDeg, 0.f, 1e-3);
