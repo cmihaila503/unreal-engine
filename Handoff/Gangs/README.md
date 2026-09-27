@@ -48,7 +48,7 @@ Read Handoff/Gangs/README.md. Dialogue and TimeOfDay must be integrated. One ste
 
 ### 1. Tags (one set per gang)
 ```ini
-+GameplayTagList=(Tag="Gang.Tataraşi",DevComment="")
++GameplayTagList=(Tag="Gang.Tatarasi",DevComment="")
 +GameplayTagList=(Tag="Stat.Respect.Tatarasi",DevComment="Gang respect for the player (saved)")
 +GameplayTagList=(Tag="Stat.TaxPaidUntil.Tatarasi",DevComment="Game day the taxa runs out")
 +GameplayTagList=(Tag="Event.Gang.TaxPaid",DevComment="Payload = the gang's taxa DialogueTag")

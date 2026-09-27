@@ -77,6 +77,7 @@ Integrate in this order — later ones use earlier ones:
 | 17 | `Weather/` | hourly weather chain, blended look, wet roads (grip), fewer people, gloom, rain/fog | 1 | 24 | medium — scales road physical-material friction at runtime (restored) |
 | 18 | `Radio/` | stations on the world clock, DJ / ads / news about you, streamer mode, ducks under score and talk | 10, 9 | 25 | low |
 | 19 | `Gangs/` | territories, respect (saved) with hysteresis stance, taxa dialogue, members around; (gang-vs-gang needs AI teams) | 4, 1 | 25 | medium — adds SetFaction to the NPC controller |
+| 20 | `Disguise/` | on-foot description by outfit + headwear; change unseen = not recognised at a distance, chase cools | 14, 5 | 14 | medium — a gate in ReportSighting |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
