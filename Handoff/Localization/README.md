@@ -8,8 +8,8 @@ din `NSLOCTEXT` / `LOCTEXT` (și din asset-uri: dialoguri, misiuni, setări) și
 găsește asemenea texte. Pe codul tău de acum a găsit **33**:
 - **30 de replici ale pietonilor** în `AI/PedestrianComponent.cpp` („Ești nebun?! Era să mă calci!” …), ținute ca
   `TEXT("...")` și afișate prin `FString`;
-- **3 în HUD** (`MurdarHUD.cpp`): „Oprește mai întâi”, „Urcă în %s”, „Ia %s (%d)” (acesta din urmă formatat cu
-  `FString::Printf`).
+- **3 în HUD** (`MurdarHUD.cpp`): „Oprește mai întâi”, „Urcă în %s” și numele de rezervă „mașină”. Tot acolo,
+  „Ia %s (%d)” e la fel de netraductibil, dar e prea scurt ca verificatorul să-l prindă: se repară împreună.
 
 Codul din toate handoff-urile trece verificarea (0 probleme). Mai jos: repararea celor 33, setarea țintei de
 localizare și opțiunea „Limba” în Setări.
