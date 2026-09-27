@@ -75,6 +75,7 @@ Integrate in this order — later ones use earlier ones:
 | 15 | `Jobs/` | pager + payphone; generated delivery / smuggling / car order / debt collection on the mission runtime | 2, 3, 5 | 29 | low |
 | 16 | `PaperMap/` | the paper map page in the pause menu: known places, the job circled, a cross where you are | 10, 15 | 19 | low |
 | 17 | `Weather/` | hourly weather chain, blended look, wet roads (grip), fewer people, gloom, rain/fog | 1 | 24 | medium — scales road physical-material friction at runtime (restored) |
+| 18 | `Radio/` | stations on the world clock, DJ / ads / news about you, streamer mode, ducks under score and talk | 10, 9 | 25 | low |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
