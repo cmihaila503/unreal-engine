@@ -26,7 +26,7 @@ Read Handoff/WorldState/README.md. One step at a time, building after each (edit
    Fix the ADAPT include paths.
 3. Apply README §Patches 1-3. Before patch 1, make a copy of an existing save (Saved/SaveGames/*.mrd) to test that
    old saves still load (WS-07). Patch 2: read how Damage01 is used in AMurdarVehicle and tell me what SetDamage01
-   must refresh.
+   must refresh, and whether the car body material has a colour parameter.
 4. Build, run README §In-game tests; write Docs/WORLD_STATE_TEST_REPORT.md. Report IMPLEMENTED/TESTED/FAILED/BLOCKED/NEXT.
 ```
 
@@ -70,10 +70,18 @@ Read Handoff/WorldState/README.md. One step at a time, building after each (edit
 And in `Load()` at "Version migrations go here": `// v1 -> v2: no World in the file; it stays empty and nothing is applied.`
 (Tagged property serialization fills missing fields with defaults — WS-07 proves it on a real old file.)
 
-### 2. `Vehicle/MurdarVehicle.h/.cpp` — `SetDamage01`
+### 2. `Vehicle/MurdarVehicle.h/.cpp` — `SetDamage01` and the paint colour
 ```cpp
 /** Restore from a save: crash damage 0..1 as it was. */
 void SetDamage01(float NewDamage01);
+
+/** Body paint. Police descriptions use it (Handoff/Garage), saves keep it. Alpha 0 = never set. */
+void SetPaintColor(const FLinearColor& Color);
+FLinearColor GetPaintColor() const { return PaintColor; }
+
+private:
+	FLinearColor PaintColor = FLinearColor(0.f, 0.f, 0.f, 0.f);
+	UPROPERTY(Transient) TArray<TObjectPtr<UMaterialInstanceDynamic>> PaintMats;
 ```
 ```cpp
 void AMurdarVehicle::SetDamage01(float NewDamage01)
@@ -82,7 +90,22 @@ void AMurdarVehicle::SetDamage01(float NewDamage01)
 	// ADAPT: refresh whatever AddCrashDamage derives from Damage01 (the steering pull DamagePullSign, smoke, a
 	// disabled engine...). If AddCrashDamage only accumulates, the rest reads Damage01 and there is nothing to do.
 }
+
+void AMurdarVehicle::SetPaintColor(const FLinearColor& Color)
+{
+	PaintColor = FLinearColor(Color.R, Color.G, Color.B, 1.f);
+	if (!Chassis) { return; }
+	// One dynamic instance per body material slot, made once. ADAPT: the parameter name in the car body material
+	// ("PaintColor" here); slots whose material lacks it simply ignore the call (glass, chrome, lights).
+	if (PaintMats.Num() == 0)
+	{
+		for (int32 i = 0; i < Chassis->GetNumMaterials(); ++i) { PaintMats.Add(Chassis->CreateAndSetMaterialInstanceDynamic(i)); }
+	}
+	for (UMaterialInstanceDynamic* M : PaintMats) { if (M) { M->SetVectorParameterValue(TEXT("PaintColor"), PaintColor); } }
+}
 ```
+If the car body material has no colour parameter yet, add a `PaintColor` vector parameter multiplied into the base
+colour (a material edit: ask the user). Until then the colour is still recorded and used by the police description.
 
 ### 3. Cheat — `Director/DirectorCheats.h/.cpp`
 ```cpp

@@ -35,6 +35,24 @@ struct MURDAR_GAMEDEV_API FPlayerCarRecord
 	UPROPERTY() FSoftObjectPath Definition;
 	UPROPERTY() FTransform Transform;
 	UPROPERTY() float Damage01 = 0.f;
+	/** Its paint (Handoff/Garage); alpha 0 = not recorded (older saves): keep the car's own. */
+	UPROPERTY() FLinearColor Paint = FLinearColor(0.f, 0.f, 0.f, 0.f);
+};
+
+/** A car kept in a garage or held at the impound lot (Handoff/Garage). */
+USTRUCT(BlueprintType)
+struct MURDAR_GAMEDEV_API FStoredCarRecord
+{
+	GENERATED_BODY()
+
+	/** The garage (AMurdarGarage::GarageId) holding it. */
+	UPROPERTY() FName GarageId;
+	UPROPERTY() FSoftClassPath VehicleClass;
+	UPROPERTY() FSoftObjectPath Definition;
+	UPROPERTY() FLinearColor Paint = FLinearColor(0.f, 0.f, 0.f, 0.f);
+	UPROPERTY() float Damage01 = 0.f;
+	/** Impound: the game day it was taken (the fee grows per day). */
+	UPROPERTY() int32 Day = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -52,6 +70,10 @@ struct MURDAR_GAMEDEV_API FMurdarWorldState
 	UPROPERTY() FPlayerCarRecord Car;
 
 	UPROPERTY() TArray<FWorldActorRecord> Actors;
+
+	/** Cars in the player's garages and at the impound lot (Handoff/Garage). Not per map: a garage id is unique. */
+	UPROPERTY() TArray<FStoredCarRecord> StoredCars;
+	UPROPERTY() TArray<FStoredCarRecord> Impounded;
 
 	/** Not saved: set right after a load from file, cleared once applied (lives in the game instance across the map
 	 *  change that ContinueFromSave may do). */

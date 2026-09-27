@@ -134,6 +134,7 @@ void UWorldStateSubsystem::Capture()
 		W->Car.Definition = FSoftObjectPath(Car->Definition.Get());
 		W->Car.Transform = Car->GetActorTransform();
 		W->Car.Damage01 = Car->GetDamage();
+		W->Car.Paint = Car->GetPaintColor(); // Handoff/Garage patch 1
 	}
 
 	for (const TWeakObjectPtr<UWorldStateComponent>& Weak : Registered)
@@ -170,6 +171,7 @@ AMurdarVehicle* UWorldStateSubsystem::RestoreCar(const FMurdarWorldState& W)
 		Car = Vehicles->SpawnVehicle(Class, Cast<UVehicleDefinition>(W.Car.Definition.TryLoad()), W.Car.Transform);
 	}
 	if (Car) { Car->SetDamage01(W.Car.Damage01); } // README §Patches 2
+	if (Car && W.Car.Paint.A > 0.f) { Car->SetPaintColor(W.Car.Paint); } // Handoff/Garage patch 1
 	PlayerCar = Car;
 	return Car;
 }
