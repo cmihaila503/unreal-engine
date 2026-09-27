@@ -43,7 +43,7 @@ plus one `Hint.*` per hint below.
 
 | Hint | On event | Text |
 |---|---|---|
-| `Hint.Car.Locked` | `Event.Vehicle.WindowBroken` is too late — use `Event.Interact`? No: offer from Theft's first „Sparge geamul” prompt (call `Offer`) | „Ține-te lângă ușă până pornește. Dacă pleci, o iei de la capăt.” |
+| `Hint.Car.Locked` | none — VehicleTheft calls `UHintSubsystem::Get(this)->Offer(Hint.Car.Locked)` when `GetPrompt` first returns „Sparge geamul” | „Ține-te lângă ușă până pornește. Dacă pleci, o iei de la capăt.” |
 | `Hint.Car.Stolen` | `Event.Vehicle.ReportedStolen` | „Mașina a fost dată în urmărire. O vopsitorie o face de nerecunoscut.” |
 | `Hint.Police.Stop` | `Event.Police.Demand` | „Tu alegi: plătești, taci și iei amenda, sau fugi.” |
 | `Hint.Police.Chase` | `Event.Police.PursuitStarted` | „Pierde-i din vedere. Ascunde-te, schimbă mașina sau vopsește-o.” |
