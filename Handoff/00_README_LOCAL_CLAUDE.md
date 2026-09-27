@@ -69,6 +69,7 @@ Integrate in this order — later ones use earlier ones:
 | 9 | `Music/` | dynamic score from stress, wanted, shots, tails | (4, 8) | 37 | low |
 | 10 | `Menus/` | Slate pause menu, save only when calm, settings | (2, 4, 7) | 38 | low |
 | 11 | `AILod/` | AI significance LOD + streaming radius + World Partition plan | — | 35 | low — measure before/after |
+| 12 | `VehicleTheft/` | locked cars, break-in + hotwire, carjack, stolen reports → a stop | (Interaction) | 43 | medium — `Input_Interact` car branch, HUD car prompt |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
