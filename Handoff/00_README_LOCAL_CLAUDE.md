@@ -83,6 +83,7 @@ Integrate in this order — later ones use earlier ones:
 | 23 | `Cutscenes/` | Level Sequence scenes from events, never mid-chase, queue, hold-to-skip, letterbox, facts | 3, 4 | 16 | low |
 | 24 | `Hints/` | one-time contextual hints, spaced, never while busy, saved | 10 | 12 | low |
 | 25 | `Localization/` | loc_lint.py (found 33 untranslatable strings in the project), RO native + EN, language option | 10 | 8 py tests | low |
+| 26 | `Pooling/` | reuse pedestrians instead of spawn/destroy (cars later), warmed in quiet frames | — | 9 | medium — PopulationSubsystem spawn/despawn + ResetForPool |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
