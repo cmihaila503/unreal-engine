@@ -84,6 +84,7 @@ Integrate in this order — later ones use earlier ones:
 | 24 | `Hints/` | one-time contextual hints, spaced, never while busy, saved | 10 | 12 | low |
 | 25 | `Localization/` | loc_lint.py (found 33 untranslatable strings in the project), RO native + EN, language option | 10 | 8 py tests | low |
 | 26 | `Pooling/` | reuse pedestrians instead of spawn/destroy (cars later), warmed in quiet frames | — | 9 | medium — PopulationSubsystem spawn/despawn + ResetForPool |
+| 27 | `Automation/` | run all rule tests (27 files), generate Unreal automation tests (Murdar.Rules.*), headless run, nightly chain, GitHub workflow | — | 27 files | none |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
