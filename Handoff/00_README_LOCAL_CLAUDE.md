@@ -72,6 +72,7 @@ Integrate in this order — later ones use earlier ones:
 | 12 | `VehicleTheft/` | locked cars, break-in + hotwire, carjack, stolen reports → a stop | (Interaction) | 43 | medium — `Input_Interact` car branch, HUD car prompt |
 | 13 | `Garage/` | car colours in police descriptions, respray (repair + loses the description, cools a chase out of sight), storage garage, impound lot | 5, 6, 7, 3, 12 | 30 | medium — `MatchesKnownVehicle` now checks colour |
 | 14 | `Safehouse/` | bed (sleep → skip, heal, save), money stash safe from arrest, wardrobe, hiding cools heat | 3, 5, 1 | 26 | low |
+| 15 | `Jobs/` | pager + payphone; generated delivery / smuggling / car order / debt collection on the mission runtime | 2, 3, 5 | 29 | low |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
