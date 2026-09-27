@@ -79,6 +79,7 @@ Integrate in this order — later ones use earlier ones:
 | 19 | `Gangs/` | territories, respect (saved) with hysteresis stance, taxa dialogue, members around; (gang-vs-gang needs AI teams) | 4, 1 | 25 | medium — adds SetFaction to the NPC controller |
 | 20 | `Disguise/` | on-foot description by outfit + headwear; change unseen = not recognised at a distance, chase cools | 14, 5 | 14 | medium — a gate in ReportSighting |
 | 21 | `FrontEnd/` | title screen, loading screen with tips, save slots (3 + auto) with chapter/day/hour | 10 | 17 | medium — module class + PeekSave |
+| 22 | `KeyRemap/` | Enhanced Input user-settings remapping page, swap on clash, per context | 10 | 15 | medium — IMC assets need Player Mappable settings (asset edit, ask) |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
