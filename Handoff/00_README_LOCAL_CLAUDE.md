@@ -100,7 +100,8 @@ Integrate in this order — later ones use earlier ones:
 | 24 | `Hints/` | one-time contextual hints, spaced, never while busy, saved | 10 | 12 | low |
 | 25 | `Localization/` | loc_lint.py (found 33 untranslatable strings in the project), RO native + EN, language option | 10 | 8 py tests | low |
 | 26 | `Pooling/` | reuse pedestrians instead of spawn/destroy (cars later), warmed in quiet frames | — | 9 | medium — PopulationSubsystem spawn/despawn + ResetForPool |
-| 27 | `Automation/` | run all rule tests (27 files), generate Unreal automation tests (Murdar.Rules.*), headless run, nightly chain, GitHub workflow | — | 27 files | none |
+| 27 | `Automation/` | run all rule tests (28 files), generate Unreal automation tests (Murdar.Rules.*), headless run, nightly chain, GitHub workflow | — | 28 files | none |
+| 28 | `AIQuality/` | **AI stops getting stuck**: stuck watchdog (nudge → break the rule → recycle unseen), junction deadlock fixes, traffic drives round people/bodies/you, cover + peek for gunmen, navmesh flee/hide, pedestrians keep right, spatial index (kills the O(N²) scans → more density), soak test `Murdar.AI.Soak 600 tour` with PASS/FAIL | — (26 if integrated) | 101 | medium — patches traffic, junctions, NPC controller, population; each fix has its own switch. **Can be done before 12–27** (touches only existing AI) |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
