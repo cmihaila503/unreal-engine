@@ -7,6 +7,22 @@ compiled or run. Every code block is a starting point written against the names 
 `EnterState()`, `UGameEventSubsystem`, `UFactionMemorySubsystem`, `UPoliceResponseDirector` …). Wherever the real
 member name was not in the Docs the code says `// ADAPT:` — look it up in the source, do not guess.
 
+## Assets rule (2026-09-27, approved by the user — overrides every older "do not modify .uasset/.umap" / "never save the level from a script" line in this file and in every Handoff README)
+
+The Unreal editor is connected to local Claude Code through **MCP**. Local Claude **may create and modify
+`.uasset` and `.umap`** — through the MCP editor tools (or editor Python), never by writing the binary files
+directly. This covers Input Mapping Contexts (player-mappable), materials (`PaintColor`), skeleton sockets,
+sound classes/mixes, DataAssets, Blueprints, and placing gameplay actors (garages, safehouses, payphones, job
+points, gang zones) in levels.
+
+Every time:
+1. Checkpoint first: `git status`; commit uncommitted asset/level work (or ask me once) before changing anything.
+2. Say in one line what you change (asset path + property), then change it.
+3. Save only the assets/levels you changed — never "Save All".
+4. Read the value back after saving to confirm it stuck (Python traps below still apply).
+5. City map: place actors only where I marked them; if nothing is marked, propose positions and ask.
+6. List every changed asset in the IMPLEMENTED report.
+
 ## Paste this prompt into local Claude Code
 
 ```
@@ -22,7 +38,7 @@ Apply one Handoff file at a time, in order:
   4. add the entry from Handoff/12_TUNING_LOG_ENTRIES.md to Docs/POLICE_VEHICLE_AI_TUNING_LOG.md with real numbers,
   5. update Docs/POLICE_VEHICLE_AI_TEST_REPORT.md,
   6. report IMPLEMENTED / TESTED / FAILED / BLOCKED / NEXT (spec §1.30) and wait for my OK before the next file.
-Do not modify .uasset/.umap. Do not change several tuning parameters at once (spec §54).
+Assets/levels may be modified through MCP — follow §Assets rule. Do not change several tuning parameters at once (spec §54).
 ```
 
 ## Files
@@ -91,8 +107,8 @@ Integrate in this order — later ones use earlier ones:
 ```
 Read Handoff/00_README_LOCAL_CLAUDE.md §New systems. Integrate the folders in the order of that table, one per
 session step: read the folder's README and follow its own paste-prompt; build and run its tests; report in Romanian
-IMPLEMENTED/TESTED/FAILED/BLOCKED/NEXT and wait for my OK before the next folder. Never modify existing .uasset/.umap
-without asking; never save the level from a script.
+IMPLEMENTED/TESTED/FAILED/BLOCKED/NEXT and wait for my OK before the next folder. You may create/modify .uasset/.umap
+through MCP — follow §Assets rule (checkpoint first, save only what you changed, read back).
 ```
 
 Background for every item: `Docs/POLICE_VEHICLE_AI_GAP_ANALYSIS.md` (IDs A*, B*, C* refer to it).
@@ -102,7 +118,8 @@ Background for every item: `Docs/POLICE_VEHICLE_AI_GAP_ANALYSIS.md` (IDs A*, B*,
 - Work in the **main checkout** only — never launch the editor from a git worktree (full rebuild + all shaders).
 - Build: `"C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Murdar_GameDevEditor Win64
   Development -Project="E:\Unreal Engine\Murdar_GameDev\Murdar_GameDev.uproject" -WaitMutex` (editor closed).
-- **Never save the level from a script** (`L_Sandbox` has uncommitted work). Save named assets explicitly.
+- **Levels:** save only the level you changed, explicitly, after the §Assets rule checkpoint (`L_Sandbox` had
+  uncommitted work — commit it first). Never "Save All". Save named assets explicitly.
 - **A changed or new `UPROPERTY` default does not reach assets that already serialise that property.** New
   properties (all of the ones in this handoff) take the class default, but verify on the six profile assets through
   `Tools/uepy.py` — read the values back.
