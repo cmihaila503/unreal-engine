@@ -286,6 +286,17 @@ void UJobSubsystem::Finish(bool bSuccess, const FString& Reason)
 	Debtor.Reset();
 }
 
+bool UJobSubsystem::GetTargetLocation(FVector& OutLocation, FText& OutName) const
+{
+	if (!IsRunning()) { return false; }
+	const MurdarMission::FObjectiveSpec& O = Runtime->GetSpec().Objectives[Runtime->GetObjective()];
+	if (O.Id == "collect" && Debtor.IsValid()) { OutLocation = Debtor->GetActorLocation(); OutName = PlaceOf(Job.Pickup, false); return true; }
+	if (!O.bReach) { return false; }
+	OutLocation = FVector(O.ReachLocation.X, O.ReachLocation.Y, O.ReachLocation.Z);
+	OutName = PlaceOf(O.Id == "pickup" ? Job.Pickup : Job.Drop, O.Id != "pickup");
+	return true;
+}
+
 void UJobSubsystem::AbortJob(const FString& Reason)
 {
 	if (Runtime.IsValid()) { Apply(Runtime->Abort(TCHAR_TO_UTF8(*Reason))); }

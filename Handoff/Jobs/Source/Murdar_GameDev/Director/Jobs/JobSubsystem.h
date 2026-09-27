@@ -29,6 +29,8 @@ public:
 	bool StartJob(int32 ContactIndex, int32 Kind = -1);
 	void AbortJob(const FString& Reason);
 	bool IsRunning() const { return Runtime.IsValid() && Runtime->GetState() == MurdarMission::EState::Running; }
+	/** Where the current stage sends him (the paper map circles it). False when there is no place to go. */
+	bool GetTargetLocation(FVector& OutLocation, FText& OutName) const;
 	FString Describe() const;
 
 protected:

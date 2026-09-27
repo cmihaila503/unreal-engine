@@ -73,6 +73,7 @@ Integrate in this order — later ones use earlier ones:
 | 13 | `Garage/` | car colours in police descriptions, respray (repair + loses the description, cools a chase out of sight), storage garage, impound lot | 5, 6, 7, 3, 12 | 30 | medium — `MatchesKnownVehicle` now checks colour |
 | 14 | `Safehouse/` | bed (sleep → skip, heal, save), money stash safe from arrest, wardrobe, hiding cools heat | 3, 5, 1 | 26 | low |
 | 15 | `Jobs/` | pager + payphone; generated delivery / smuggling / car order / debt collection on the mission runtime | 2, 3, 5 | 29 | low |
+| 16 | `PaperMap/` | the paper map page in the pause menu: known places, the job circled, a cross where you are | 10, 15 | 19 | low |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
