@@ -81,6 +81,7 @@ Integrate in this order — later ones use earlier ones:
 | 21 | `FrontEnd/` | title screen, loading screen with tips, save slots (3 + auto) with chapter/day/hour | 10 | 17 | medium — module class + PeekSave |
 | 22 | `KeyRemap/` | Enhanced Input user-settings remapping page, swap on clash, per context | 10 | 15 | medium — IMC assets need Player Mappable settings (asset edit, ask) |
 | 23 | `Cutscenes/` | Level Sequence scenes from events, never mid-chase, queue, hold-to-skip, letterbox, facts | 3, 4 | 16 | low |
+| 24 | `Hints/` | one-time contextual hints, spaced, never while busy, saved | 10 | 12 | low |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
