@@ -100,8 +100,10 @@ Integrate in this order — later ones use earlier ones:
 | 24 | `Hints/` | one-time contextual hints, spaced, never while busy, saved | 10 | 12 | low |
 | 25 | `Localization/` | loc_lint.py (found 33 untranslatable strings in the project), RO native + EN, language option | 10 | 8 py tests | low |
 | 26 | `Pooling/` | reuse pedestrians instead of spawn/destroy (cars later), warmed in quiet frames | — | 9 | medium — PopulationSubsystem spawn/despawn + ResetForPool |
-| 27 | `Automation/` | run all rule tests (28 files), generate Unreal automation tests (Murdar.Rules.*), headless run, nightly chain, GitHub workflow | — | 28 files | none |
+| 27 | `Automation/` | run all rule tests (30 files), generate Unreal automation tests (Murdar.Rules.*), headless run, nightly chain, GitHub workflow | — | 30 files | none |
 | 28 | `AIQuality/` | **AI stops getting stuck**: stuck watchdog (nudge → break the rule → recycle unseen), junction deadlock fixes, traffic drives round people/bodies/you, cover + peek for gunmen, navmesh flee/hide, pedestrians keep right, spatial index (kills the O(N²) scans → more density), soak test `Murdar.AI.Soak 600 tour` with PASS/FAIL | — (26 if integrated) | 101 | medium — patches traffic, junctions, NPC controller, population; each fix has its own switch. **Can be done before 12–27** (touches only existing AI) |
+| 29 | `CarWeight/` | the car heavy in the air and against walls: extra gravity only when all wheels are off, air pitch/roll damping + leveling, damped landing, no-bounce body material, capped depenetration, impact shake + hit-stop + thud; scale audit script (car / lanes / blocs) and camera targets | — | 37 | medium — every car gets a component; camera asset values change (via script, read back) |
+| 30 | `Gps/` | GTA-style minimap (heading-up, zooms with speed), big map in the pause menu (M), your waypoint + the mission pin **at the same time**, each with its route along the traffic lanes | 17, 10 (16, Missions) | 41 | medium — patches SPaperMap, pause menu, Missions; switches off BP_MapManager's map after the user's OK |
 
 "(n)" = works better with n, builds without it. One folder at a time; build and test each before the next.
 
